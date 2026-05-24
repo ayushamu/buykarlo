@@ -1,0 +1,350 @@
+"use client"
+
+import { Suspense, use, useState, useEffect, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { 
+  Search, 
+  Laptop, 
+  BookOpen, 
+  Bike, 
+  Home as HomeIcon, 
+  Sparkles, 
+  X 
+} from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { ListingCard } from "@/components/listing/ListingCard"
+import { getActiveListings } from "@/features/listings/actions"
+import { cn } from "@/lib/utils"
+
+const CATEGORIES = [
+  { id: "all", name: "All", icon: Sparkles },
+  { id: "electronics", name: "Electronics", icon: Laptop },
+  { id: "books", name: "Books", icon: BookOpen },
+  { id: "cycles", name: "Cycles", icon: Bike },
+  { id: "dorm-decor", name: "Dorm Decor", icon: HomeIcon },
+]
+
+function ExploreContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const categoryParam = searchParams.get("category") || "all"
+
+  // Location Selector states
+  const [activeCampus, setActiveCampus] = useState("Aligarh Muslim University (AMU)")
+  const [activeCampusShort, setActiveCampusShort] = useState("AMU")
+
+  // Feed listings & filters states
+  const [listingsList, setListingsList] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState(categoryParam)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCondition, setSelectedCondition] = useState("all")
+  const [selectedPriceRange, setSelectedPriceRange] = useState("all")
+  const [sortBy, setSortBy] = useState("latest")
+
+  // Sync category state from URL query params
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategory(categoryParam)
+    }
+  }, [categoryParam])
+
+  // Sync campus state from localStorage & listen for changes
+  useEffect(() => {
+    const saved = localStorage.getItem("buykarlo_campus")
+    if (saved) {
+      setActiveCampus(saved)
+      setActiveCampusShort(saved.split(" (")[0] === "Aligarh Muslim University" ? "AMU" : saved.split(" (")[0] === "Delhi University" ? "DU" : "JMI")
+    }
+
+    const handleCampusChange = () => {
+      const newCampus = localStorage.getItem("buykarlo_campus") || "Aligarh Muslim University (AMU)"
+      setActiveCampus(newCampus)
+      setActiveCampusShort(newCampus.split(" (")[0] === "Aligarh Muslim University" ? "AMU" : newCampus.split(" (")[0] === "Delhi University" ? "DU" : "JMI")
+    }
+
+    window.addEventListener("buykarlo_campus_changed", handleCampusChange)
+    return () => window.removeEventListener("buykarlo_campus_changed", handleCampusChange)
+  }, [])
+
+  // Load listings whenever category or campus changes
+  useEffect(() => {
+    async function fetchListings() {
+      try {
+        setIsLoading(true)
+        const dbCampus = activeCampus.split(" (")[0]
+        const res = await getActiveListings(selectedCategory, dbCampus)
+        if (res.listings) {
+          setListingsList(res.listings)
+        }
+      } catch (err) {
+        console.error("Failed to load listings:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchListings()
+  }, [selectedCategory, activeCampus])
+
+  // Process filters in-memory on the client side
+  const processedListings = useMemo(() => {
+    let list = [...listingsList]
+
+    // 1. Search Query Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter((l) =>
+        l.title.toLowerCase().includes(q) ||
+        (l.sellerDepartment && l.sellerDepartment.toLowerCase().includes(q))
+      )
+    }
+
+    // 2. Condition Filter
+    if (selectedCondition !== "all") {
+      list = list.filter((l) => l.condition === selectedCondition)
+    }
+
+    // 3. Price Filter
+    if (selectedPriceRange !== "all") {
+      if (selectedPriceRange === "under_1000") {
+        list = list.filter((l) => l.price < 1000)
+      } else if (selectedPriceRange === "1000_5000") {
+        list = list.filter((l) => l.price >= 1000 && l.price <= 5000)
+      } else if (selectedPriceRange === "over_5000") {
+        list = list.filter((l) => l.price > 5000)
+      }
+    }
+
+    // 4. Sorting
+    if (sortBy === "price_asc") {
+      list.sort((a, b) => a.price - b.price)
+    } else if (sortBy === "price_desc") {
+      list.sort((a, b) => b.price - a.price)
+    }
+
+    return list
+  }, [listingsList, searchQuery, selectedCondition, selectedPriceRange, sortBy])
+
+  const selectCategoryAndRedirect = (catId: string) => {
+    setSelectedCategory(catId)
+    router.replace(`/explore?category=${catId}`, { scroll: false })
+  }
+
+  return (
+    <div className="mx-auto max-w-container-max px-margin-mobile py-8 md:px-margin-desktop md:py-12 animate-in fade-in duration-300">
+      {/* Category Layout Section */}
+      <section className="flex flex-col md:flex-row gap-8 items-stretch pt-4 text-left">
+        {/* Left Sticky Sidebar (Categories) - Desktop Only */}
+        <aside className="hidden md:flex w-64 shrink-0 flex-col space-y-2 sticky top-24 self-start bg-white border border-outline-variant/30 rounded-3xl p-4 shadow-sm select-none">
+          <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/75 mb-1">
+            Categories
+          </p>
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon
+            const isActive = selectedCategory === cat.id
+            return (
+              <button
+                key={cat.id}
+                onClick={() => selectCategoryAndRedirect(cat.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                  isActive
+                    ? "bg-primary text-white shadow-md shadow-primary/10"
+                    : "text-on-surface-variant hover:bg-surface-container hover:text-primary"
+                )}
+              >
+                <Icon size={18} />
+                <span>{cat.name}</span>
+              </button>
+            )
+          })}
+        </aside>
+
+        {/* Mobile Categories list (Horizontal scroll) - Mobile Only */}
+        <div className="flex md:hidden flex-col gap-2 shrink-0 select-none w-full">
+          <p className="font-body text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/80 px-1">
+            Browse Categories
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none w-full">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon
+              const isActive = selectedCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => selectCategoryAndRedirect(cat.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-full font-body text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
+                    isActive
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                  )}
+                >
+                  <Icon size={14} />
+                  <span>{cat.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Right Content Area (Filters + Listings Grid) */}
+        <div className="flex-1 flex flex-col space-y-6">
+          {/* Search & Quick Filters Topbar */}
+          <div className="bg-white border border-outline-variant/30 rounded-3xl p-5 shadow-sm space-y-4">
+            {/* Search bar inside the filters container */}
+            <div className="relative w-full shadow-sm rounded-full bg-surface-container-low border border-outline-variant/30 px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition-all flex items-center">
+              <Search size={18} className="text-outline shrink-0 ml-1" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search within ${selectedCategory === "all" ? "all listings" : selectedCategory}...`}
+                className="flex-1 bg-transparent border-none outline-none font-body text-sm px-3 text-on-surface py-1.5"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="p-1 hover:bg-surface-container rounded-full text-on-surface-variant cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Filter pills */}
+            <div className="flex flex-wrap items-center gap-y-3 gap-x-2">
+              {/* Condition selector pills */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pr-1">
+                  Condition:
+                </span>
+                {["all", "new", "like_new", "good", "fair"].map((cond) => (
+                  <button
+                    key={cond}
+                    onClick={() => setSelectedCondition(cond)}
+                    className={cn(
+                      "px-3 py-1 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border border-outline-variant/15",
+                      selectedCondition === cond
+                        ? "bg-primary/10 border-primary text-primary"
+                        : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                    )}
+                  >
+                    {cond === "all" ? "All" : cond === "like_new" ? "Like New" : cond.charAt(0).toUpperCase() + cond.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="h-4 w-[1px] bg-outline-variant/40 mx-1 hidden lg:block"></div>
+
+              {/* Price Selector pills */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pr-1">
+                  Price:
+                </span>
+                {[
+                  { id: "all", label: "All Prices" },
+                  { id: "under_1000", label: "Under ₹1K" },
+                  { id: "1000_5000", label: "₹1K - ₹5K" },
+                  { id: "over_5000", label: "Over ₹5K" }
+                ].map((pr) => (
+                  <button
+                    key={pr.id}
+                    onClick={() => setSelectedPriceRange(pr.id)}
+                    className={cn(
+                      "px-3 py-1 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border border-outline-variant/15",
+                      selectedPriceRange === pr.id
+                        ? "bg-primary/10 border-primary text-primary"
+                        : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                    )}
+                  >
+                    {pr.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="h-4 w-[1px] bg-outline-variant/40 mx-1 hidden lg:block"></div>
+
+              {/* Sort Selector pills */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pr-1">
+                  Sort:
+                </span>
+                {[
+                  { id: "latest", label: "Latest" },
+                  { id: "price_asc", label: "Price: Low to High" },
+                  { id: "price_desc", label: "Price: High to Low" }
+                ].map((sb) => (
+                  <button
+                    key={sb.id}
+                    onClick={() => setSortBy(sb.id)}
+                    className={cn(
+                      "px-3 py-1 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border border-outline-variant/15",
+                      sortBy === sb.id
+                        ? "bg-primary/10 border-primary text-primary"
+                        : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                    )}
+                  >
+                    {sb.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid of Listings */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {isLoading ? (
+              [...Array(8)].map((_, i) => (
+                <div key={i} className="animate-pulse bg-surface-container-low rounded-2xl aspect-[4/3] w-full border border-outline-variant/20 flex flex-col">
+                  <div className="w-full h-2/3 bg-surface-container-high rounded-t-2xl"></div>
+                  <div className="p-4 flex-1 space-y-2">
+                    <div className="h-4 bg-surface-container-high rounded w-3/4"></div>
+                    <div className="h-4 bg-surface-container-high rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))
+            ) : processedListings.length > 0 ? (
+              processedListings.map((listing) => (
+                <ListingCard key={listing.id} {...listing} />
+              ))
+            ) : (
+              <div className="col-span-full py-16 text-center flex flex-col items-center justify-center space-y-3 bg-surface-container-low/40 rounded-3xl border border-outline-variant/10 w-full px-6">
+                <p className="max-w-sm text-on-surface-variant font-medium">
+                  No items are currently listed in this category on your campus matching your filters.
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchQuery("")
+                    setSelectedCondition("all")
+                    setSelectedPriceRange("all")
+                    setSortBy("latest")
+                  }}
+                  className="action-gradient text-white px-6 py-2.5 rounded-full font-body text-label-lg font-bold shadow-md hover:scale-105 active:scale-95 transition-all w-fit cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-container-max px-margin-mobile py-12 md:px-margin-desktop">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="animate-pulse bg-surface-container-low rounded-2xl aspect-[4/3] border border-outline-variant/20" />
+          ))}
+        </div>
+      </div>
+    }>
+      <ExploreContent />
+    </Suspense>
+  )
+}

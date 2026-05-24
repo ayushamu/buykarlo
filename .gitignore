@@ -43,3 +43,6 @@ next-env.d.ts
 # design mocks
 /ayush/
 
+# local WhatsApp session state
+.wwebjs_auth/
+services/**/.wwebjs_auth/

@@ -1,9 +1,11 @@
 import Image from "next/image"
 import Link from "next/link"
+import { ArrowRight, Heart } from "lucide-react"
 import { ConditionBadge, type Condition } from "@/components/shared/ConditionBadge"
 
 interface ListingCardProps {
   id: string
+  slug?: string
   title: string
   price: number
   condition: Condition
@@ -11,13 +13,13 @@ interface ListingCardProps {
   sellerDepartment?: string
 }
 
-export function ListingCard({ id, title, price, condition, imageUrl, sellerDepartment }: ListingCardProps) {
+export function ListingCard({ id, slug, title, price, condition, imageUrl, sellerDepartment }: ListingCardProps) {
   return (
     <Link 
-      href={`/item/${id}`} 
-      className="group flex flex-col bg-surface border border-border rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-[220ms] ease-out overflow-hidden cursor-pointer h-full"
+      href={`/item/${slug || id}`} 
+      className="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-outline-variant/20 bg-white shadow-[0_14px_32px_rgba(26,38,86,0.06)] transition-all duration-[220ms] ease-out hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(26,38,86,0.12)]"
     >
-      <div className="relative w-full aspect-[4/3] bg-background overflow-hidden">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container-low">
         {imageUrl ? (
           <Image 
             src={imageUrl} 
@@ -26,29 +28,37 @@ export function ListingCard({ id, title, price, condition, imageUrl, sellerDepar
             className="object-cover transition-transform duration-[400ms] group-hover:scale-105"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-text-muted bg-surface-raised text-sm font-medium">
+          <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low text-sm font-medium text-on-surface-variant">
             No image
           </div>
         )}
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute left-4 top-4 z-10">
           <ConditionBadge condition={condition} />
+        </div>
+        <div className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-on-surface-variant shadow-sm backdrop-blur">
+          <Heart size={18} />
         </div>
       </div>
       
-      <div className="p-4 flex flex-col flex-1">
-        <h3 className="font-body font-medium text-base text-text-primary line-clamp-2 leading-snug">
+      <div className="flex flex-1 flex-col p-5">
+        {sellerDepartment ? (
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary/90">
+            {sellerDepartment}
+          </p>
+        ) : null}
+
+        <h3 className="mt-2 line-clamp-2 text-[1.4rem] font-semibold leading-[1.2] text-on-surface transition-colors group-hover:text-primary">
           {title}
         </h3>
-        
-        <div className="mt-auto pt-4 flex items-end justify-between">
-          <span className="font-display font-bold text-xl text-primary tracking-tight">
-            ₹{price.toLocaleString('en-IN')}
+
+        <div className="mt-auto flex items-end justify-between border-t border-outline-variant/12 pt-5">
+          <span className="font-display text-[2rem] font-extrabold tracking-tight text-on-surface">
+            ₹{price.toLocaleString("en-IN")}
           </span>
-          {sellerDepartment && (
-            <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold">
-              {sellerDepartment}
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+            View Details
+            <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
         </div>
       </div>
     </Link>
