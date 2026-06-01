@@ -161,7 +161,7 @@ export default async function PolicyPage({ params }: PageProps) {
   // Load and parse markdown policy file from filesystem
   let contentHtml: React.ReactNode = null
   try {
-    const filePath = path.join(process.cwd(), "ayush", "policy", `${slug}.md`)
+    const filePath = path.join(process.cwd(), "src", "content", "policy", `${slug}.md`)
     const rawContent = fs.readFileSync(filePath, "utf-8")
     contentHtml = parseMarkdownToJSX(rawContent)
   } catch (error) {
