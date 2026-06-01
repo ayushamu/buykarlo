@@ -251,6 +251,25 @@ export async function updateListingStatus(id: string, status: "active" | "sold" 
       return { error: "Failed to update listing status." }
     }
 
+    // Boost trust score on successful sale
+    if (status === "sold") {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("trust_score")
+        .eq("id", user.id)
+        .single()
+      
+      if (profile) {
+        const currentScore = profile.trust_score || 50
+        const newScore = Math.min(currentScore + 5, 100)
+        
+        await supabase
+          .from("profiles")
+          .update({ trust_score: newScore })
+          .eq("id", user.id)
+      }
+    }
+
     // 4. Revalidate paths
     revalidatePath("/")
     revalidatePath("/explore")
@@ -312,8 +331,13 @@ export async function deleteListing(id: string) {
 }
 
 export async function getActiveListings(categorySlug?: string, campus?: string) {
+  const startTime = performance.now();
+  console.log(`[getActiveListings] Start: categorySlug=${categorySlug}, campus=${campus}`);
   try {
-    const supabase = await createClient()
+    const clientStart = performance.now();
+    const supabase = await createClient();
+    const clientEnd = performance.now();
+    console.log(`[getActiveListings] Supabase client created in ${(clientEnd - clientStart).toFixed(2)}ms`);
 
     let query = supabase
       .from("listings")
@@ -336,22 +360,28 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
     }
 
     if (categorySlug && categorySlug !== "all") {
+      const catStart = performance.now();
       // Fetch category ID from slug
       const { data: categoryData } = await supabase
         .from("categories")
         .select("id")
         .eq("slug", categorySlug)
         .maybeSingle()
+      console.log(`[getActiveListings] Category lookup for "${categorySlug}" took ${(performance.now() - catStart).toFixed(2)}ms`);
       
       if (categoryData) {
         query = query.eq("category_id", categoryData.id)
       } else {
+        console.log(`[getActiveListings] Category "${categorySlug}" not found. Total time: ${(performance.now() - startTime).toFixed(2)}ms`);
         // Category doesn't exist, return empty listings list
         return { success: true, listings: [] }
       }
     }
 
+    const queryStart = performance.now();
     const { data: listings, error } = await query.order("created_at", { ascending: false })
+    const queryEnd = performance.now();
+    console.log(`[getActiveListings] DB Query took ${(queryEnd - queryStart).toFixed(2)}ms, returned ${listings?.length || 0} listings`);
 
     if (error) {
       console.error("Error fetching active listings:", error)
@@ -359,6 +389,7 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
     }
 
     // Format listings for feed
+    const formatStart = performance.now();
     const formatted = listings?.map(l => {
       const sortedImages = l.images ? [...l.images].sort((a: any, b: any) => a.display_order - b.display_order) : []
       const imageUrl = sortedImages.length > 0 ? sortedImages[0].storage_path : null
@@ -376,6 +407,8 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
         sellerTrustScore: (l.profiles as any)?.trust_score || 0
       }
     }) || []
+    console.log(`[getActiveListings] Formatting took ${(performance.now() - formatStart).toFixed(2)}ms`);
+    console.log(`[getActiveListings] Total execution time: ${(performance.now() - startTime).toFixed(2)}ms`);
 
     return { success: true, listings: formatted }
   } catch (error) {
@@ -734,5 +767,172 @@ export async function toggleSavedListing(listingId: string) {
     return { error: "Unable to update saved state." }
   }
 }
+
+export interface UpdateListingInput {
+  id: string
+  title: string
+  description: string
+  price: number
+  categorySlug: string
+  condition: "new" | "like_new" | "good" | "fair" | "poor"
+  campus?: string
+  department?: string
+  imageUrls: string[]
+}
+
+export async function getListingForEdit(id: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return { error: "Unauthorized. Please log in first." }
+    }
+
+    const { data: listing, error } = await supabase
+      .from("listings")
+      .select(`
+        id,
+        seller_id,
+        title,
+        description,
+        price,
+        condition,
+        campus,
+        metadata,
+        category:categories(slug),
+        images:listing_images(storage_path, display_order)
+      `)
+      .eq("id", id)
+      .single()
+
+    if (error || !listing) {
+      return { error: "Listing not found." }
+    }
+
+    if (listing.seller_id !== user.id) {
+      return { error: "Permission denied. You do not own this listing." }
+    }
+
+    const sortedImages = listing.images ? [...listing.images].sort((a: any, b: any) => a.display_order - b.display_order) : []
+    const imageUrls = sortedImages.map((img: any) => img.storage_path)
+
+    const categoryObj = Array.isArray(listing.category) ? listing.category[0] : (listing.category || null)
+    const categorySlug = (categoryObj as any)?.slug || ""
+
+    return {
+      success: true,
+      listing: {
+        id: listing.id,
+        title: listing.title,
+        description: listing.description || "",
+        price: Number(listing.price),
+        condition: listing.condition,
+        campus: listing.campus,
+        department: (listing.metadata as any)?.department || "",
+        categorySlug,
+        imageUrls,
+      }
+    }
+  } catch (err) {
+    console.error("getListingForEdit Exception:", err)
+    return { error: "An unexpected error occurred while loading your listing." }
+  }
+}
+
+export async function updateListing(input: UpdateListingInput) {
+  try {
+    const supabase = await createClient()
+
+    // 1. Authenticate user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return { error: "Unauthorized. Please log in first." }
+    }
+
+    // 2. Fetch listing to verify ownership & get current slug
+    const { data: listing, error: fetchError } = await supabase
+      .from("listings")
+      .select("seller_id, slug")
+      .eq("id", input.id)
+      .single()
+
+    if (fetchError || !listing) {
+      return { error: "Listing not found." }
+    }
+
+    if (listing.seller_id !== user.id) {
+      return { error: "Permission denied. You do not own this listing." }
+    }
+
+    // 3. Fetch category ID from slug
+    const { data: categoryData, error: catError } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("slug", input.categorySlug)
+      .maybeSingle()
+
+    if (catError || !categoryData) {
+      return { error: `Database error or category "${input.categorySlug}" not found.` }
+    }
+
+    // 4. Update listing row
+    const { error: updateError } = await supabase
+      .from("listings")
+      .update({
+        category_id: categoryData.id,
+        title: input.title.trim(),
+        description: input.description.trim(),
+        price: input.price,
+        condition: input.condition,
+        campus: input.campus || "Aligarh Muslim University",
+        metadata: input.department ? { department: input.department.trim() } : {},
+      })
+      .eq("id", input.id)
+
+    if (updateError) {
+      console.error("Listing Update Database Error:", updateError)
+      return { error: "Failed to update listing in database." }
+    }
+
+    // 5. Update images (delete existing & re-insert)
+    const { error: deleteImagesError } = await supabase
+      .from("listing_images")
+      .delete()
+      .eq("listing_id", input.id)
+
+    if (deleteImagesError) {
+      console.error("Failed to clear old listing images:", deleteImagesError)
+    }
+
+    if (input.imageUrls && input.imageUrls.length > 0) {
+      const imagePayloads = input.imageUrls.map((url, index) => ({
+        listing_id: input.id,
+        storage_path: url,
+        display_order: index,
+      }))
+
+      const { error: imageInsertError } = await supabase
+        .from("listing_images")
+        .insert(imagePayloads)
+
+      if (imageInsertError) {
+        console.error("Failed to insert new listing images:", imageInsertError)
+      }
+    }
+
+    // 6. Revalidate caches
+    revalidatePath("/")
+    revalidatePath("/explore")
+    revalidatePath("/dashboard/listings")
+    revalidatePath(`/item/${listing.slug}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error("updateListing Server Action Exception:", error)
+    return { error: "An unexpected error occurred while saving your product." }
+  }
+}
+
 
 

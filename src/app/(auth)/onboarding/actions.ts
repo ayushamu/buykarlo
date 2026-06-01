@@ -2,12 +2,14 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { sendWelcomeEmail } from "@/lib/email"
 
 interface CompleteOnboardingInput {
   fullName: string
   university: string
   department: string
   phone: string
+  password?: string
 }
 
 export async function completeOnboarding(input: CompleteOnboardingInput) {
@@ -18,6 +20,16 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return { error: "Unauthorized. Please log in first." }
+    }
+
+    // Update password if provided
+    if (input.password) {
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: input.password
+      })
+      if (passwordError) {
+        return { error: `Failed to set account password: ${passwordError.message}` }
+      }
     }
 
     // 2. Determine verification status based on email domain
@@ -56,6 +68,13 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
     if (updateError) {
       console.error("Onboarding Database Update Error:", updateError)
       return { error: `Failed to update profile details: ${updateError.message}` }
+    }
+
+    // Trigger onboarding welcome email asynchronously
+    if (email) {
+      sendWelcomeEmail(email, input.fullName.trim()).catch((err) => {
+        console.error("Welcome email async send failed:", err)
+      })
     }
 
     revalidatePath("/")

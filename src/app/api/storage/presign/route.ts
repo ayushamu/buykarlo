@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Parse request payload
-    const { filename, contentType } = await request.json()
+    const { filename, contentType, type } = await request.json()
 
     if (!filename || !contentType) {
       return NextResponse.json(
@@ -39,7 +39,8 @@ export async function POST(request: Request) {
     // 3. Generate a unique key for the file
     const fileExtension = filename.split(".").pop() || "jpg"
     const uniqueId = crypto.randomUUID()
-    const fileKey = `listings/${user.id}/${uniqueId}.${fileExtension}`
+    const folder = type === "id_card" ? "id_cards" : "listings"
+    const fileKey = `${folder}/${user.id}/${uniqueId}.${fileExtension}`
 
     // 4. Generate pre-signed PUT URL
     const command = new PutObjectCommand({

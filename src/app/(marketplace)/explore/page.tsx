@@ -9,12 +9,16 @@ import {
   Bike, 
   Home as HomeIcon, 
   Sparkles, 
-  X 
+  X,
+  ChevronDown,
+  Filter
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ListingCard } from "@/components/listing/ListingCard"
 import { getActiveListings } from "@/features/listings/actions"
 import { cn } from "@/lib/utils"
+import { AnimatePresence, motion } from "framer-motion"
+import { CAMPUSES } from "@/lib/constants"
 
 const CATEGORIES = [
   { id: "all", name: "All", icon: Sparkles },
@@ -41,6 +45,7 @@ function ExploreContent() {
   const [selectedCondition, setSelectedCondition] = useState("all")
   const [selectedPriceRange, setSelectedPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("latest")
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
 
   // Sync category state from URL query params
   useEffect(() => {
@@ -54,13 +59,15 @@ function ExploreContent() {
     const saved = localStorage.getItem("buykarlo_campus")
     if (saved) {
       setActiveCampus(saved)
-      setActiveCampusShort(saved.split(" (")[0] === "Aligarh Muslim University" ? "AMU" : saved.split(" (")[0] === "Delhi University" ? "DU" : "JMI")
+      const matched = CAMPUSES.find(c => c.name === saved)
+      setActiveCampusShort(matched?.short || "AMU")
     }
 
     const handleCampusChange = () => {
       const newCampus = localStorage.getItem("buykarlo_campus") || "Aligarh Muslim University (AMU)"
       setActiveCampus(newCampus)
-      setActiveCampusShort(newCampus.split(" (")[0] === "Aligarh Muslim University" ? "AMU" : newCampus.split(" (")[0] === "Delhi University" ? "DU" : "JMI")
+      const matched = CAMPUSES.find(c => c.name === newCampus)
+      setActiveCampusShort(matched?.short || "AMU")
     }
 
     window.addEventListener("buykarlo_campus_changed", handleCampusChange)
@@ -190,10 +197,10 @@ function ExploreContent() {
 
         {/* Right Content Area (Filters + Listings Grid) */}
         <div className="flex-1 flex flex-col space-y-6">
-          {/* Search & Quick Filters Topbar */}
-          <div className="bg-white border border-outline-variant/30 rounded-3xl p-5 shadow-sm space-y-4">
+          {/* Search & Collapsible Filters Topbar */}
+          <div className="bg-white border border-outline-variant/30 rounded-[2rem] p-4 shadow-sm md:p-6 space-y-4">
             {/* Search bar inside the filters container */}
-            <div className="relative w-full shadow-sm rounded-full bg-surface-container-low border border-outline-variant/30 px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition-all flex items-center">
+            <div className="relative w-full shadow-sm rounded-full bg-surface-container-low border border-outline-variant/30 px-4 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all flex items-center">
               <Search size={18} className="text-outline shrink-0 ml-1" />
               <input
                 type="text"
@@ -212,84 +219,127 @@ function ExploreContent() {
               )}
             </div>
 
-            {/* Quick Filter pills */}
-            <div className="flex flex-wrap items-center gap-y-3 gap-x-2">
-              {/* Condition selector pills */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pr-1">
-                  Condition:
-                </span>
-                {["all", "new", "like_new", "good", "fair"].map((cond) => (
-                  <button
-                    key={cond}
-                    onClick={() => setSelectedCondition(cond)}
-                    className={cn(
-                      "px-3 py-1 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border border-outline-variant/15",
-                      selectedCondition === cond
-                        ? "bg-primary/10 border-primary text-primary"
-                        : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                    )}
-                  >
-                    {cond === "all" ? "All" : cond === "like_new" ? "Like New" : cond.charAt(0).toUpperCase() + cond.slice(1)}
-                  </button>
-                ))}
+            {/* Quick Filter Info & Selectors Row */}
+            <div className="flex flex-col gap-4 border-t border-outline-variant/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <p className="font-body text-sm font-semibold text-on-surface">
+                  <span className="font-extrabold">{processedListings.length}</span> items found
+                </p>
+                {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+                  <>
+                    <div className="h-4 w-px bg-outline-variant/30" />
+                    <button
+                      onClick={() => {
+                        setSelectedCondition("all")
+                        setSelectedPriceRange("all")
+                      }}
+                      className="text-xs font-bold text-primary hover:text-secondary hover:underline transition-colors cursor-pointer"
+                    >
+                      Reset Filters
+                    </button>
+                  </>
+                )}
               </div>
 
-              <div className="h-4 w-[1px] bg-outline-variant/40 mx-1 hidden lg:block"></div>
-
-              {/* Price Selector pills */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pr-1">
-                  Price:
-                </span>
-                {[
-                  { id: "all", label: "All Prices" },
-                  { id: "under_1000", label: "Under ₹1K" },
-                  { id: "1000_5000", label: "₹1K - ₹5K" },
-                  { id: "over_5000", label: "Over ₹5K" }
-                ].map((pr) => (
-                  <button
-                    key={pr.id}
-                    onClick={() => setSelectedPriceRange(pr.id)}
-                    className={cn(
-                      "px-3 py-1 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border border-outline-variant/15",
-                      selectedPriceRange === pr.id
-                        ? "bg-primary/10 border-primary text-primary"
-                        : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                    )}
+              {/* Sorting and Advanced Filter Button */}
+              <div className="flex items-center gap-2 sm:self-auto self-end">
+                {/* HTML Select for Sorting (Saves massive screen space) */}
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="appearance-none rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2 pr-9 text-xs font-bold text-on-surface-variant outline-none hover:bg-surface-container-high hover:border-outline-variant/50 transition-all cursor-pointer"
                   >
-                    {pr.label}
-                  </button>
-                ))}
-              </div>
+                    <option value="latest">Latest Deals</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline pointer-events-none" />
+                </div>
 
-              <div className="h-4 w-[1px] bg-outline-variant/40 mx-1 hidden lg:block"></div>
-
-              {/* Sort Selector pills */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider pr-1">
-                  Sort:
-                </span>
-                {[
-                  { id: "latest", label: "Latest" },
-                  { id: "price_asc", label: "Price: Low to High" },
-                  { id: "price_desc", label: "Price: High to Low" }
-                ].map((sb) => (
-                  <button
-                    key={sb.id}
-                    onClick={() => setSortBy(sb.id)}
-                    className={cn(
-                      "px-3 py-1 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border border-outline-variant/15",
-                      sortBy === sb.id
-                        ? "bg-primary/10 border-primary text-primary"
-                        : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                    )}
-                  >
-                    {sb.label}
-                  </button>
-                ))}
+                {/* Filters Toggle Button */}
+                <button
+                  onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer",
+                    isFiltersExpanded || ((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-outline-variant/30 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
+                  )}
+                  title="Advanced Filters"
+                >
+                  <Filter size={14} />
+                  <span>Filters</span>
+                  {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[9px] font-extrabold text-white">
+                      {(selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
+
+            {/* Slide-down Advanced filters dropdown container */}
+            <AnimatePresence>
+              {isFiltersExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="overflow-hidden border-t border-outline-variant/10 mt-4"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-surface-container-low/40 rounded-2xl p-5 border border-outline-variant/20 mt-4">
+                    {/* Condition Sub-group */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">Item Condition</p>
+                      <div className="flex flex-wrap gap-2">
+                        {["all", "new", "like_new", "good", "fair"].map((cond) => (
+                          <button
+                            key={cond}
+                            onClick={() => setSelectedCondition(cond)}
+                            className={cn(
+                              "rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
+                              selectedCondition === cond
+                                ? "border-primary/40 bg-primary/10 text-primary font-bold shadow-sm"
+                                : "border-outline-variant/15 bg-white text-on-surface-variant hover:bg-surface-container"
+                            )}
+                          >
+                            {cond === "all" ? "All" : cond === "like_new" ? "Like New" : cond.charAt(0).toUpperCase() + cond.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Price Range Sub-group */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">Price Limit</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: "all", label: "All Prices" },
+                          { id: "under_1000", label: "Under ₹1K" },
+                          { id: "1000_5000", label: "₹1K - ₹5K" },
+                          { id: "over_5000", label: "Over ₹5K" }
+                        ].map((pr) => (
+                          <button
+                            key={pr.id}
+                            onClick={() => setSelectedPriceRange(pr.id)}
+                            className={cn(
+                              "rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
+                              selectedPriceRange === pr.id
+                                ? "border-primary/40 bg-primary/10 text-primary font-bold shadow-sm"
+                                : "border-outline-variant/15 bg-white text-on-surface-variant hover:bg-surface-container"
+                            )}
+                          >
+                            {pr.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Grid of Listings */}

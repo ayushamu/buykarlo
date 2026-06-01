@@ -11,6 +11,8 @@ import {
   SellerStatCard,
   type SellerListingItem,
 } from "@/components/seller/SellerPrimitives"
+import { MarkSoldModal } from "@/components/seller/MarkSoldModal"
+import { PendingReviewsBanner } from "@/components/dashboard/PendingReviewsBanner"
 
 interface ProfileData {
   full_name: string | null
@@ -54,6 +56,10 @@ export default function SellerDashboardPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  
+  // Mark Sold Modal State
+  const [markSoldOpen, setMarkSoldOpen] = useState(false)
+  const [markSoldListing, setMarkSoldListing] = useState<{ id: string; title: string } | null>(null)
 
   async function loadDashboardData() {
     try {
@@ -80,6 +86,15 @@ export default function SellerDashboardPage() {
   }, [])
 
   async function updateStatus(id: string, status: "active" | "sold" | "hidden") {
+    if (status === "sold") {
+      const listing = listings.find((l) => l.id === id)
+      if (listing) {
+        setMarkSoldListing({ id: listing.id, title: listing.title })
+        setMarkSoldOpen(true)
+      }
+      return
+    }
+
     try {
       setActionLoading(id)
       const res = await updateListingStatus(id, status)
@@ -185,6 +200,9 @@ export default function SellerDashboardPage() {
           <SellerStatCard label="Trust Score" value={`${trustScore}`} detail={trustBand} />
         </div>
       </section>
+
+      {/* Pending Reviews Notification Banner */}
+      <PendingReviewsBanner />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_1.55fr]">
         <section className="space-y-5">
@@ -313,6 +331,18 @@ export default function SellerDashboardPage() {
           </div>
         </section>
       </div>
+      {markSoldListing && (
+        <MarkSoldModal
+          isOpen={markSoldOpen}
+          onClose={() => {
+            setMarkSoldOpen(false)
+            setMarkSoldListing(null)
+          }}
+          listingId={markSoldListing.id}
+          listingTitle={markSoldListing.title}
+          onSuccess={loadDashboardData}
+        />
+      )}
     </div>
   )
 }

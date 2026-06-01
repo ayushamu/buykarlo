@@ -2,6 +2,12 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+Create a local `.env` file with the required service keys. BuyKarlo AI needs:
+
+```bash
+GEMINI_API_KEY=
+```
+
 First, run the development server:
 
 ```bash

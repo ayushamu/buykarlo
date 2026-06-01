@@ -395,3 +395,125 @@ export async function setUserTrustScoreByEmail(email: string, score: number) {
   }
 }
 
+export async function getPendingVerifications() {
+  try {
+    const access = await checkAdminAccess()
+    if (!access.isAdmin) return { error: access.error }
+
+    const supabase = await createClient()
+
+    // Fetch pending verifications with profile data
+    const { data: verifications, error } = await supabase
+      .from("verifications")
+      .select(`
+        id,
+        document_url,
+        status,
+        created_at,
+        user:user_id(id, full_name, email, university, department, trust_score)
+      `)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching pending verifications:", error)
+      return { error: error.message }
+    }
+
+    const formatted = (verifications || []).map((v: any) => ({
+      id: v.id,
+      document_url: v.document_url,
+      status: v.status,
+      created_at: v.created_at,
+      user: Array.isArray(v.user) ? v.user[0] : (v.user || null)
+    }))
+
+    return { success: true, verifications: formatted }
+  } catch (error) {
+    console.error("getPendingVerifications Exception:", error)
+    return { error: "Failed to load pending verifications." }
+  }
+}
+
+export async function resolveVerification(
+  verificationId: string,
+  action: "approve" | "reject",
+  notes?: string
+) {
+  try {
+    const access = await checkAdminAccess()
+    if (!access.isAdmin) return { error: access.error }
+
+    const supabase = await createClient()
+
+    // 1. Fetch verification details
+    const { data: verification, error: fetchVerError } = await supabase
+      .from("verifications")
+      .select("user_id")
+      .eq("id", verificationId)
+      .single()
+
+    if (fetchVerError || !verification) {
+      return { error: "Verification request not found." }
+    }
+
+    const userId = verification.user_id
+    const resolvedStatus = action === "approve" ? "verified" : "rejected"
+
+    // 2. Fetch user's current trust score
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("trust_score")
+      .eq("id", userId)
+      .single()
+
+    if (profileError || !profile) {
+      return { error: "User profile not found." }
+    }
+
+    // 3. Calculate new trust score if approved (+30 points capped at 100)
+    const currentScore = profile.trust_score || 50
+    const newScore = action === "approve" ? Math.min(currentScore + 30, 100) : currentScore
+
+    // 4. Perform updates inside Supabase
+    // Update verification record
+    const { error: updateVerError } = await supabase
+      .from("verifications")
+      .update({
+        status: resolvedStatus,
+        admin_notes: notes || null,
+        reviewed_by: access.user?.id,
+        reviewed_at: new Date().toISOString()
+      })
+      .eq("id", verificationId)
+
+    if (updateVerError) {
+      console.error("Error updating verification record:", updateVerError)
+      return { error: "Failed to resolve verification request." }
+    }
+
+    // Update user profile status and trust score
+    const { error: updateProfileError } = await supabase
+      .from("profiles")
+      .update({
+        verification_status: resolvedStatus,
+        trust_score: newScore
+      })
+      .eq("id", userId)
+
+    if (updateProfileError) {
+      console.error("Error updating user profile status:", updateProfileError)
+      return { error: "Failed to update profile verification status." }
+    }
+
+    revalidatePath("/profile")
+    revalidatePath("/admin/verifications")
+
+    return { success: true }
+  } catch (error) {
+    console.error("resolveVerification Exception:", error)
+    return { error: "An unexpected error occurred." }
+  }
+}
+
+

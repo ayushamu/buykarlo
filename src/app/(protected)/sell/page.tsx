@@ -1,18 +1,28 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Camera, Check, ChevronDown, ImagePlus, Loader2, MapPin, Sparkles, Trash2, TrendingUp } from "lucide-react"
-import { createListing } from "@/features/listings/actions"
+import { createListing, getListingForEdit, updateListing } from "@/features/listings/actions"
 import { Input } from "@/components/ui/input"
+import { DRAFT_EVENT_NAME, DRAFT_STORAGE_KEY } from "@/components/ai/BuyKarloSellerBot"
 import { cn } from "@/lib/utils"
+import { compressImage } from "@/lib/image"
 
 const CATEGORIES = [
   { slug: "electronics", name: "Electronics" },
   { slug: "books", name: "Books" },
   { slug: "cycles", name: "Cycles" },
   { slug: "dorm-decor", name: "Dorm Decor" },
+  { slug: "sports-equipment", name: "Sports Equipment" },
+  { slug: "stationery", name: "Stationery" },
+  { slug: "fashion", name: "Fashion" },
+  { slug: "furniture", name: "Furniture" },
+  { slug: "appliances", name: "Appliances" },
+  { slug: "instruments", name: "Instruments" },
+  { slug: "lab-equipment", name: "Lab Equipment" },
+  { slug: "other", name: "Other" },
 ]
 
 const CONDITIONS = [
@@ -24,15 +34,18 @@ const CONDITIONS = [
 ]
 
 interface ImageUploadState {
-  file: File
+  file?: File
   previewUrl: string
   uploadProgress: number
   status: "idle" | "uploading" | "success" | "error"
   publicUrl?: string
 }
 
-export default function SellPage() {
+function SellPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get("edit")
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [price, setPrice] = useState("")
@@ -42,8 +55,10 @@ export default function SellPage() {
   const [department, setDepartment] = useState("")
   const [images, setImages] = useState<ImageUploadState[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [loadingListing, setLoadingListing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [descriptionAiNote, setDescriptionAiNote] = useState<string | null>(null)
 
   const selectedCategoryLabel = CATEGORIES.find((item) => item.slug === category)?.name ?? "Electronics"
   const suggestedPrice = useMemo(() => {
@@ -55,7 +70,93 @@ export default function SellPage() {
     return "Well-described room items perform best when pickup details are obvious."
   }, [category, price, selectedCategoryLabel])
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    const idToEdit = editId
+    if (!idToEdit) return
+
+    async function loadListingData() {
+      try {
+        setLoadingListing(true)
+        setError(null)
+        const result = await getListingForEdit(idToEdit as string)
+        if (result.error) {
+          setError(result.error)
+          return
+        }
+
+        if (result.listing) {
+          const l = result.listing
+          setTitle(l.title)
+          setDescription(l.description)
+          setPrice(String(l.price))
+          setCategory(l.categorySlug)
+          setCondition(l.condition)
+          if (l.department) {
+            setDepartment(l.department)
+            setDetailsOpen(true)
+          }
+          // Populate existing images
+          const populatedImages: ImageUploadState[] = l.imageUrls.map((url) => ({
+            previewUrl: url,
+            uploadProgress: 100,
+            status: "success",
+            publicUrl: url,
+          }))
+          setImages(populatedImages)
+        }
+      } catch (err) {
+        console.error("Failed to load listing details:", err)
+        setError("Failed to load listing details for editing.")
+      } finally {
+        setLoadingListing(false)
+      }
+    }
+
+    loadListingData()
+  }, [editId])
+
+  useEffect(() => {
+    function applySellerBotDraft(rawDraft: unknown) {
+      if (!rawDraft || typeof rawDraft !== "object" || Array.isArray(rawDraft)) return
+      const draft = rawDraft as Record<string, unknown>
+      const nextTitle = typeof draft.title === "string" ? draft.title.trim() : ""
+      const nextDescription = typeof draft.description === "string" ? draft.description.trim() : ""
+      const nextCategory = typeof draft.category === "string" ? draft.category.trim() : ""
+      const nextCondition = typeof draft.condition === "string" ? draft.condition.trim() : ""
+      const nextPrice = typeof draft.price === "string" ? draft.price.replace(/[^\d.]/g, "") : ""
+
+      if (nextTitle) setTitle(nextTitle)
+      if (nextCategory && CATEGORIES.some((item) => item.slug === nextCategory)) setCategory(nextCategory)
+      if (nextCondition && CONDITIONS.some((item) => item.value === nextCondition)) setCondition(nextCondition)
+      if (nextPrice) setPrice(nextPrice)
+      if (nextDescription) {
+        setDescription(nextDescription)
+        setDescriptionAiNote("Applied from BuyKarlo AI Seller Bot. Review it before posting.")
+        setDetailsOpen(true)
+      }
+    }
+
+    function applyStoredDraft() {
+      const stored = window.localStorage.getItem(DRAFT_STORAGE_KEY)
+      if (!stored) return
+      try {
+        applySellerBotDraft(JSON.parse(stored))
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY)
+      } catch (error) {
+        console.error("Failed to apply seller bot draft:", error)
+      }
+    }
+
+    function handleDraftEvent(event: Event) {
+      applySellerBotDraft((event as CustomEvent).detail)
+    }
+
+    if (!editId) applyStoredDraft()
+    window.addEventListener(DRAFT_EVENT_NAME, handleDraftEvent)
+    return () => window.removeEventListener(DRAFT_EVENT_NAME, handleDraftEvent)
+  }, [editId])
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return
     const selectedFiles = Array.from(e.target.files)
 
@@ -64,27 +165,39 @@ export default function SellPage() {
       return
     }
 
-    setImages((prev) => [
-      ...prev,
-      ...selectedFiles.map((file) => ({
-        file,
-        previewUrl: URL.createObjectURL(file),
-        uploadProgress: 0,
-        status: "idle" as const,
-      })),
-    ])
     setError(null)
+    try {
+      const processedImages = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const compressed = await compressImage(file)
+          return {
+            file: compressed,
+            previewUrl: URL.createObjectURL(compressed),
+            uploadProgress: 0,
+            status: "idle" as const,
+          }
+        })
+      )
+      setImages((prev) => [...prev, ...processedImages])
+    } catch (err) {
+      console.error("Failed to compress listing images:", err)
+      setError("Failed to compress images. Please try different images.")
+    }
   }
 
   function removeImage(index: number) {
     setImages((prev) => {
       const target = prev[index]
-      if (target) URL.revokeObjectURL(target.previewUrl)
+      if (target && target.previewUrl.startsWith("blob:")) URL.revokeObjectURL(target.previewUrl)
       return prev.filter((_, currentIndex) => currentIndex !== index)
     })
   }
 
   async function uploadToR2(imageState: ImageUploadState, index: number): Promise<string> {
+    if (!imageState.file) {
+      throw new Error("No file provided for upload.")
+    }
+
     const presignRes = await fetch("/api/storage/presign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -104,7 +217,7 @@ export default function SellPage() {
     const xhr = new XMLHttpRequest()
     return new Promise<string>((resolve, reject) => {
       xhr.open("PUT", uploadUrl, true)
-      xhr.setRequestHeader("Content-Type", imageState.file.type)
+      xhr.setRequestHeader("Content-Type", imageState.file!.type)
 
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable) return
@@ -157,34 +270,66 @@ export default function SellPage() {
         const image = images[i]
         if (image.status === "success" && image.publicUrl) {
           uploadedUrls.push(image.publicUrl)
-        } else {
+        } else if (image.file) {
           uploadedUrls.push(await uploadToR2(image, i))
         }
       }
 
-      const result = await createListing({
-        title,
-        description,
-        price: numericPrice,
-        categorySlug: category,
-        condition: condition as "new" | "like_new" | "good" | "fair" | "poor",
-        campus,
-        department: department || undefined,
-        imageUrls: uploadedUrls,
-      })
+      if (editId) {
+        const result = await updateListing({
+          id: editId,
+          title,
+          description,
+          price: numericPrice,
+          categorySlug: category,
+          condition: condition as "new" | "like_new" | "good" | "fair" | "poor",
+          campus,
+          department: department || undefined,
+          imageUrls: uploadedUrls,
+        })
 
-      if (result.error) {
-        setError(result.error)
-        setSubmitting(false)
-        return
+        if (result.error) {
+          setError(result.error)
+          setSubmitting(false)
+          return
+        }
+      } else {
+        const result = await createListing({
+          title,
+          description,
+          price: numericPrice,
+          categorySlug: category,
+          condition: condition as "new" | "like_new" | "good" | "fair" | "poor",
+          campus,
+          department: department || undefined,
+          imageUrls: uploadedUrls,
+        })
+
+        if (result.error) {
+          setError(result.error)
+          setSubmitting(false)
+          return
+        }
       }
 
       router.push("/dashboard/listings")
     } catch (err: any) {
       console.error(err)
-      setError(err.message || "Failed to list item. Please try again.")
+      setError(err.message || "Failed to save listing. Please try again.")
       setSubmitting(false)
     }
+  }
+
+  if (loadingListing) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-[2rem] bg-white border border-[var(--seller-border)] p-8 text-center shadow-sm">
+        <Loader2 className="animate-spin text-[var(--seller-primary)]" size={42} />
+        <div>
+          <h2 className="font-display text-2xl font-bold text-on-surface">Loading listing details...</h2>
+          <p className="mt-1 text-sm text-on-surface-variant">Fetching details from the campus registry.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -195,15 +340,16 @@ export default function SellPage() {
           Back to listings
         </Link>
         <span className="hidden rounded-full bg-[var(--seller-surface)] px-4 py-2 text-sm font-semibold text-[var(--seller-primary-strong)] md:inline-flex">
-          Seller composer
+          {editId ? "Seller editor" : "Seller composer"}
         </span>
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-6">
           <div className="seller-soft-gradient overflow-hidden rounded-[2rem] border border-[var(--seller-border)] p-5 md:p-8">
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--seller-primary)]">New Listing</p>
-            <h1 className="mt-3 font-display text-5xl font-extrabold tracking-tight text-on-surface">Create a calm, trusted listing</h1>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-[var(--seller-primary)]">{editId ? "Edit Listing" : "New Listing"}</p>
+            <h1 className="mt-3 font-display text-5xl font-extrabold tracking-tight text-on-surface">{editId ? "Update your calm, trusted listing" : "Create a calm, trusted listing"}</h1>
+
             <p className="mt-3 max-w-2xl text-sm text-on-surface-variant md:text-base">
               Lead with clear photos, a confident title, and realistic pricing so campus buyers can say yes quickly.
             </p>
@@ -225,7 +371,7 @@ export default function SellPage() {
             <div className="grid gap-4 p-5 md:p-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="grid gap-3 sm:grid-cols-2">
                 {images.map((image, index) => (
-                  <div key={`${image.file.name}-${index}`} className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]">
+                  <div key={`${image.file?.name || image.previewUrl}-${index}`} className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]">
                     <img src={image.previewUrl} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
                     {image.status === "uploading" ? (
                       <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white">
@@ -293,10 +439,10 @@ export default function SellPage() {
               <div className="rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] px-4 py-4">
                 <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-[var(--seller-primary)]">
                   <Sparkles size={15} />
-                  Suggested title
+                  BuyKarlo AI Seller Bot
                 </p>
                 <p className="mt-2 text-sm text-[var(--seller-text-soft)]">
-                  Use a descriptive format like brand + size/model + standout detail for faster trust.
+                  Use the floating bot in the corner to build a listing through chat. When it generates the title and description, copy them or apply them here.
                 </p>
               </div>
 
@@ -429,13 +575,21 @@ export default function SellPage() {
                   <textarea
                     id="description"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => {
+                      setDescription(e.target.value)
+                      setDescriptionAiNote(null)
+                    }}
                     rows={6}
                     required
                     disabled={submitting}
                     placeholder="Mention age, usage, included accessories, meetup preferences, and anything that helps campus buyers trust the listing."
                     className="w-full rounded-[1.5rem] border border-[var(--seller-border)] px-4 py-4 text-base outline-none"
                   />
+                  {descriptionAiNote ? (
+                    <p className="rounded-[1rem] bg-[var(--seller-surface)] px-3 py-2 text-sm font-medium text-[var(--seller-primary-strong)]">
+                      {descriptionAiNote}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -444,7 +598,7 @@ export default function SellPage() {
 
         <aside className="space-y-6 xl:sticky xl:top-32 xl:self-start">
           <div className="rounded-[2rem] seller-card p-6">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--seller-primary)]">Listing Preview</p>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--seller-primary)]">{editId ? "Live Preview" : "Listing Preview"}</p>
             <div className="mt-5 overflow-hidden rounded-[1.75rem] border border-[var(--seller-border)] bg-white">
               <div className="aspect-[5/4] bg-[var(--seller-surface)]" style={images[0] ? { backgroundImage: `url(${images[0].previewUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
                 {!images[0] ? (
@@ -466,7 +620,7 @@ export default function SellPage() {
           </div>
 
           <div className="rounded-[2rem] seller-card p-6">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--seller-primary)]">Before you post</p>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--seller-primary)]">{editId ? "Before you save" : "Before you post"}</p>
             <div className="mt-5 space-y-3 text-sm text-on-surface-variant">
               <div className="rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] px-4 py-4">
                 Use a sharp cover photo with natural light.
@@ -490,12 +644,12 @@ export default function SellPage() {
             {submitting ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                Uploading & creating listing...
+                {editId ? "Saving changes..." : "Uploading & creating listing..."}
               </>
             ) : (
               <>
                 <Check size={18} />
-                Post listing
+                {editId ? "Save changes" : "Post listing"}
               </>
             )}
           </button>
@@ -510,17 +664,33 @@ export default function SellPage() {
             {submitting ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                Uploading & creating listing...
+                {editId ? "Saving changes..." : "Uploading & creating listing..."}
               </>
             ) : (
               <>
                 <Check size={18} />
-                Post listing
+                {editId ? "Save changes" : "Post listing"}
               </>
             )}
           </button>
         </div>
       </form>
     </div>
+  )
+}
+
+export default function SellPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-[2rem] bg-white border border-[var(--seller-border)] p-8 text-center shadow-sm">
+        <Loader2 className="animate-spin text-[var(--seller-primary)]" size={42} />
+        <div>
+          <h2 className="font-display text-2xl font-bold text-on-surface">Loading sell composer...</h2>
+          <p className="mt-1 text-sm text-on-surface-variant">Setting up your trusted dashboard.</p>
+        </div>
+      </div>
+    }>
+      <SellPageInner />
+    </Suspense>
   )
 }

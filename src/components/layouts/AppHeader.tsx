@@ -19,18 +19,7 @@ import {
 } from "lucide-react"
 import { BuyKarloMark } from "@/components/brand/BuyKarloMark"
 import { cn } from "@/lib/utils"
-
-const CAMPUSES = [
-  { name: "Aligarh Muslim University (AMU)", active: true, short: "AMU" },
-  { name: "Delhi University (DU)", active: true, short: "DU" },
-  { name: "Jamia Millia Islamia (JMI)", active: true, short: "JMI" },
-  { name: "UPES Dehradun", active: false, short: "UPES" },
-  { name: "Jawaharlal Nehru University (JNU)", active: false, short: "JNU" },
-  { name: "Banaras Hindu University (BHU)", active: false, short: "BHU" },
-  { name: "BITS Pilani", active: false, short: "BITS" },
-  { name: "IIT Delhi (IITD)", active: false, short: "IITD" },
-  { name: "IIT Bombay (IITB)", active: false, short: "IITB" }
-]
+import { CAMPUSES } from "@/lib/constants"
 
 interface HeaderProfile {
   full_name?: string | null
@@ -89,6 +78,19 @@ export function AppHeader({ profile }: AppHeaderProps) {
     }
   }, [profile])
 
+  // Close campus dropdown on click outside (resilient interactive overlay pattern)
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest(".campus-selector-container")) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick)
+    return () => document.removeEventListener("mousedown", handleOutsideClick)
+  }, [dropdownOpen])
+
   const handleSelectCampus = (campusName: string) => {
     setSelectedCampus(campusName)
     localStorage.setItem("buykarlo_campus", campusName)
@@ -113,9 +115,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
       <header className="sticky top-0 z-50 border-b border-[var(--seller-border)] bg-white/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-container-max items-center gap-3 px-4 py-4 md:px-margin-desktop md:py-5">
           <Link href="/dashboard" className="hidden items-center gap-3 lg:flex">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-white shadow-[0_16px_32px_rgba(31,157,119,0.18)]">
-              <BuyKarloMark className="h-14 w-14" />
-            </div>
+            <BuyKarloMark className="h-12 w-12" />
             <div>
               <p className="font-display text-3xl font-extrabold tracking-tight text-on-surface">BuyKarlo</p>
               <p className="text-sm font-bold uppercase tracking-[0.22em] text-[var(--seller-primary)]">Seller Hub</p>
@@ -123,9 +123,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
           </Link>
 
           <div className="flex items-center gap-3 lg:hidden">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-white shadow-sm">
-              <BuyKarloMark className="h-11 w-11" />
-            </div>
+            <BuyKarloMark className="h-9 w-9 shrink-0" />
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--seller-primary)]">Seller Mode</p>
               <p className="font-display text-2xl font-extrabold tracking-tight text-on-surface">{sellerTitle}</p>
@@ -216,29 +214,27 @@ export function AppHeader({ profile }: AppHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-outline-variant/30 bg-surface/90 backdrop-blur-xl shadow-sm">
-      <div className="mx-auto flex max-w-container-max items-center justify-between gap-4 px-margin-mobile py-4 md:px-margin-desktop md:py-5">
+    <header className="sticky top-0 z-50 w-full border-b border-outline-variant/30 bg-surface/95 backdrop-blur-xl shadow-sm">
+      <div className="mx-auto flex max-w-container-max items-center justify-between gap-4 px-margin-mobile pt-3 pb-3 sm:py-4 md:px-margin-desktop md:py-5">
         <div className="flex items-center gap-3 md:gap-6 lg:gap-10">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm md:h-11 md:w-11">
-              <BuyKarloMark className="h-10 w-10 md:h-11 md:w-11" />
-            </span>
-            <span className="font-display text-2xl font-extrabold tracking-tighter text-primary md:text-3xl">BuyKarlo</span>
+          <Link href="/" className="group flex items-center gap-2.5">
+            <BuyKarloMark className="h-9 w-9 md:h-10 md:w-10 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" />
+            <span className="font-display text-2xl font-extrabold tracking-tighter text-primary md:text-3xl transition-colors duration-200 group-hover:text-secondary">BuyKarlo</span>
           </Link>
 
-          <div className="relative hidden sm:block">
+          <div className="relative hidden sm:block campus-selector-container">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2 text-sm font-semibold text-on-surface shadow-sm cursor-pointer hover:bg-surface-container-high transition-colors"
+              className="flex items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2 text-sm font-semibold text-on-surface shadow-sm cursor-pointer hover:bg-surface-container-high active:scale-95 transition-all duration-200"
             >
-              <MapPin size={16} className="text-primary" />
+              <MapPin size={16} className="text-primary transition-transform duration-300 group-hover:scale-110" />
               <span>{activeCampusShort}</span>
               <ChevronDown size={14} className={cn("text-outline transition-transform duration-200", dropdownOpen && "rotate-180")} />
             </button>
 
             {dropdownOpen && (
-              <div className="absolute top-11 left-0 z-50 w-80 bg-white border border-outline-variant/30 rounded-2xl shadow-xl p-2 flex flex-col space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 glass-panel">
-                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/75">
+              <div className="absolute top-12 left-0 z-50 w-80 bg-white dark:bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-[0_20px_50px_rgba(28,22,207,0.15)] p-2.5 flex flex-col space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70 border-b border-outline-variant/20 pb-2 mb-1.5">
                   Select Campus Location
                 </p>
                 <div className="max-h-80 overflow-y-auto space-y-0.5 scrollbar-none">
@@ -249,9 +245,9 @@ export function AppHeader({ profile }: AppHeaderProps) {
                       onClick={() => handleSelectCampus(c.name)}
                       className={cn(
                         "w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-body text-xs font-semibold text-left transition-all",
-                        !c.active && "opacity-50 cursor-not-allowed text-on-surface-variant/50",
-                        c.active && "hover:bg-primary/5 hover:text-primary cursor-pointer text-on-surface",
-                        selectedCampus === c.name && c.active && "bg-primary/10 text-primary dark:bg-primary-container/20"
+                        !c.active && "opacity-40 cursor-not-allowed text-on-surface-variant/40 bg-surface-container-low/30",
+                        c.active && "hover:bg-primary/5 hover:text-primary cursor-pointer text-on-surface hover:translate-x-0.5",
+                        selectedCampus === c.name && c.active && "bg-primary/10 text-primary dark:bg-primary-container/20 font-bold"
                       )}
                     >
                       <div className="flex flex-col min-w-0 pr-2">
@@ -269,25 +265,13 @@ export function AppHeader({ profile }: AppHeaderProps) {
           </div>
         </div>
 
-        <nav className="hidden items-center gap-6 lg:flex">
-          {BUYER_CATEGORIES.map((cat) => (
-            <Link
-              key={cat.name}
-              href={cat.href}
-              className="text-sm font-semibold text-on-surface-variant transition-colors hover:text-primary"
-            >
-              {cat.name}
-            </Link>
-          ))}
-        </nav>
-
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="hidden items-center rounded-full border border-outline-variant/30 bg-surface-container p-1 lg:flex">
+          <div className="hidden items-center rounded-full border border-outline-variant/30 bg-surface-container p-1 lg:flex shadow-inner">
             <Link
               href="/"
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-bold transition-colors",
-                marketplaceMode === "buy" ? "action-gradient text-white" : "text-on-surface-variant hover:text-on-surface"
+                "rounded-full px-4 py-2 text-sm font-bold transition-all duration-200 hover:scale-105 active:scale-95",
+                marketplaceMode === "buy" ? "action-gradient text-white shadow-sm" : "text-on-surface-variant hover:text-on-surface"
               )}
             >
               Buy
@@ -295,52 +279,112 @@ export function AppHeader({ profile }: AppHeaderProps) {
             <Link
               href="/?mode=sell"
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-bold transition-colors",
-                marketplaceMode === "sell" ? "bg-[var(--seller-primary)] text-white" : "text-on-surface-variant hover:text-on-surface"
+                "rounded-full px-4 py-2 text-sm font-bold transition-all duration-200 hover:scale-105 active:scale-95",
+                marketplaceMode === "sell" ? "bg-[var(--seller-primary)] text-white shadow-sm" : "text-on-surface-variant hover:text-on-surface"
               )}
             >
               Sell
             </Link>
           </div>
 
-          <label className="hidden min-w-[260px] items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 lg:flex">
-            <Search size={16} className="text-outline" />
+          <label className="hidden min-w-[260px] items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 lg:flex focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 focus-within:min-w-[320px] transition-all duration-300 shadow-sm">
+            <Search size={16} className="text-outline transition-colors duration-200 focus-within:text-primary" />
             <input
               type="text"
               placeholder="Search campus deals..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-on-surface-variant/70"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60"
             />
+            <kbd className="pointer-events-none hidden items-center gap-1 rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] font-medium text-on-surface-variant/80 sm:flex shrink-0">
+              ⌘K
+            </kbd>
           </label>
 
-          <Link href="/messages" className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary">
+          <Link
+            href="/messages"
+            className="relative hidden sm:inline-flex rounded-full p-2.5 text-on-surface-variant transition-all duration-200 hover:bg-surface-container hover:text-primary hover:scale-110 active:scale-90"
+            title="Messages"
+          >
             <MessageSquare size={20} />
+            <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-primary to-secondary animate-pulse ring-2 ring-white" />
           </Link>
           <Link
             href="/cart"
             className={cn(
-              "rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary",
+              "hidden sm:inline-flex rounded-full p-2.5 text-on-surface-variant transition-all duration-200 hover:bg-surface-container hover:text-primary hover:scale-110 active:scale-90",
               !isProductDetail && "lg:hidden"
             )}
+            title="Cart"
           >
             <ShoppingCart size={20} />
           </Link>
-          <Link href="/profile" className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary">
+          <Link
+            href="/profile"
+            className="hidden sm:inline-flex rounded-full p-2.5 text-on-surface-variant transition-all duration-200 hover:bg-surface-container hover:text-primary hover:scale-110 active:scale-90"
+            title="Profile"
+          >
             <User size={20} />
           </Link>
-          <Link href="/dashboard" className="hidden rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary lg:inline-flex">
+          <Link
+            href="/dashboard"
+            className="hidden rounded-full p-2.5 text-on-surface-variant transition-all duration-200 hover:bg-surface-container hover:text-primary lg:inline-flex hover:scale-110 active:scale-90"
+            title="Dashboard"
+          >
             <Bell size={20} />
           </Link>
+
+          {/* Campus Selector (Mobile only) - Resolves incomplete header on mobile screens */}
+          <div className="relative sm:hidden campus-selector-container">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center gap-1.5 rounded-full border border-outline-variant/30 bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-on-surface shadow-sm cursor-pointer hover:bg-surface-container-high active:scale-95 transition-all duration-200"
+            >
+              <MapPin size={14} className="text-primary" />
+              <span>{activeCampusShort}</span>
+              <ChevronDown size={12} className={cn("text-outline transition-transform duration-200", dropdownOpen && "rotate-180")} />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute top-10 right-0 z-50 w-72 bg-white dark:bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-[0_20px_50px_rgba(28,22,207,0.15)] p-2 flex flex-col space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                <p className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/70 border-b border-outline-variant/20 pb-1.5 mb-1">
+                  Select Campus Location
+                </p>
+                <div className="max-h-72 overflow-y-auto space-y-0.5 scrollbar-none">
+                  {CAMPUSES.map((c) => (
+                    <button
+                      key={c.name}
+                      disabled={!c.active}
+                      onClick={() => handleSelectCampus(c.name)}
+                      className={cn(
+                        "w-full flex items-center justify-between px-2.5 py-2 rounded-xl font-body text-[11px] font-semibold text-left transition-all",
+                        !c.active && "opacity-40 cursor-not-allowed text-on-surface-variant/40 bg-surface-container-low/30",
+                        c.active && "hover:bg-primary/5 hover:text-primary cursor-pointer text-on-surface hover:translate-x-0.5",
+                        selectedCampus === c.name && c.active && "bg-primary/10 text-primary dark:bg-primary-container/20 font-bold"
+                      )}
+                    >
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <span className="truncate">{c.name}</span>
+                        {!c.active && <span className="text-[8px] font-bold text-outline-variant tracking-wider uppercase mt-0.5">Coming Soon</span>}
+                      </div>
+                      {selectedCampus === c.name && c.active && (
+                        <Check size={12} className="text-primary shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {!isProductDetail ? (
-        <div className="mx-auto flex max-w-container-max items-center justify-between gap-3 px-margin-mobile pb-4 lg:hidden md:px-margin-desktop">
-          <div className="flex items-center rounded-full border border-outline-variant/30 bg-surface-container p-1">
+        <div className="mx-auto flex max-w-container-max items-center justify-between gap-3 px-margin-mobile pb-3 lg:hidden md:px-margin-desktop">
+          <div className="flex items-center rounded-full border border-outline-variant/30 bg-surface-container p-1 shadow-inner">
             <Link
               href="/"
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-bold transition-colors",
-                marketplaceMode === "buy" ? "action-gradient text-white" : "text-on-surface-variant hover:text-on-surface"
+                "rounded-full px-4 py-2 text-sm font-bold transition-all duration-200 hover:scale-105 active:scale-95",
+                marketplaceMode === "buy" ? "action-gradient text-white shadow-sm" : "text-on-surface-variant hover:text-on-surface"
               )}
             >
               Buy
@@ -348,8 +392,8 @@ export function AppHeader({ profile }: AppHeaderProps) {
             <Link
               href="/?mode=sell"
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-bold transition-colors",
-                marketplaceMode === "sell" ? "bg-[var(--seller-primary)] text-white" : "text-on-surface-variant hover:text-on-surface"
+                "rounded-full px-4 py-2 text-sm font-bold transition-all duration-200 hover:scale-105 active:scale-95",
+                marketplaceMode === "sell" ? "bg-[var(--seller-primary)] text-white shadow-sm" : "text-on-surface-variant hover:text-on-surface"
               )}
             >
               Sell
@@ -359,7 +403,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
           <Link
             href={marketplaceMode === "sell" ? "/dashboard" : "/cart"}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm",
+              "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition-all duration-200 hover:scale-105 active:scale-95",
               marketplaceMode === "sell"
                 ? "bg-[var(--seller-primary)] text-white"
                 : "border border-outline-variant/30 bg-white text-primary"

@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,9 +23,12 @@ import {
   Sparkles,
   Tag,
   Users,
+  X,
+  ChevronDown
 } from "lucide-react"
 import { getActiveListings } from "@/features/listings/actions"
 import { ListingCard } from "@/components/listing/ListingCard"
+import { CountUpStat, Reveal, StaggerReveal, fadeUpVariants, staggerContainer } from "@/components/motion/PremiumMotion"
 import { cn } from "@/lib/utils"
 
 const CATEGORIES = [
@@ -56,6 +60,28 @@ const SORT_OPTIONS = [
   { id: "price_desc", label: "Price: High to Low" },
 ]
 
+const HERO_NOTIFICATIONS = [
+  "New listing posted near AMU",
+  "3 students interested",
+  "Verified seller",
+  "Deal closed nearby",
+  "Rohan listed Calculus Book for ₹350",
+]
+
+const HERO_ACTIVITY = [
+  "A seller near Zakir Hostel just replied in 2 min",
+  "Physics notes saved by 4 AMU students today",
+  "Cycle listing moved to final meetup near Library Canteen",
+  "New verified buyer joined from Engineering Faculty",
+]
+
+const HERO_STATS = [
+  { icon: GraduationCap, end: 10, suffix: "K+", label: "AMU Students", tone: "bg-primary/10 text-primary" },
+  { icon: ShieldCheck, end: 100, suffix: "%", label: "Verified Listings", tone: "bg-success/10 text-success" },
+  { icon: Tag, end: 50, suffix: "K+", label: "Deals Closed", tone: "bg-pink-500/10 text-pink-500" },
+  { icon: Users, end: 2, suffix: "K+", label: "Active Sellers", tone: "bg-secondary/10 text-secondary" },
+]
+
 interface HomePageProps {
   searchParams: Promise<{ mode?: string; category?: string; view?: string }>
 }
@@ -64,6 +90,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const { mode = "buy", category = "all", view } = use(searchParams)
   const activeMode = mode === "sell" ? "sell" : "buy"
   const showLandingHero = activeMode === "buy" && view !== "deals" && category === "all"
+  const reduceMotion = useReducedMotion()
 
   const [activeCampus, setActiveCampus] = useState("Aligarh Muslim University (AMU)")
   const [listingsList, setListingsList] = useState<any[]>([])
@@ -74,6 +101,9 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const [selectedPriceRange, setSelectedPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("latest")
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
+  const [visibleNotificationCount, setVisibleNotificationCount] = useState(1)
+  const [activityIndex, setActivityIndex] = useState(0)
 
   useEffect(() => {
     if (category) {
@@ -118,6 +148,24 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
     fetchListings()
   }, [selectedCategory, activeCampus, showLandingHero])
+
+  useEffect(() => {
+    if (reduceMotion || !showLandingHero) return
+
+    // Keep hero activity feeling live without tying the UI to real-time data.
+    const notificationTimer = window.setInterval(() => {
+      setVisibleNotificationCount((count) => (count >= HERO_NOTIFICATIONS.length ? 1 : count + 1))
+    }, 2400)
+
+    const activityTimer = window.setInterval(() => {
+      setActivityIndex((index) => (index + 1) % HERO_ACTIVITY.length)
+    }, 3600)
+
+    return () => {
+      window.clearInterval(notificationTimer)
+      window.clearInterval(activityTimer)
+    }
+  }, [reduceMotion, showLandingHero])
 
   const processedListings = useMemo(() => {
     let list = [...listingsList]
@@ -235,40 +283,62 @@ export default function HomePage({ searchParams }: HomePageProps) {
         <section className="relative isolate overflow-hidden bg-white">
           <div className="absolute inset-y-0 right-0 hidden w-[58%] rounded-bl-[4rem] bg-primary/10 lg:block" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(107,56,212,0.12),transparent_30%),linear-gradient(90deg,#ffffff_0%,rgba(255,255,255,0.94)_43%,rgba(255,255,255,0.62)_70%,rgba(255,255,255,0.42)_100%)]" />
+          <motion.div
+            aria-hidden="true"
+            className="absolute left-[8%] top-16 h-44 w-44 rounded-full bg-amber-300/20 blur-3xl"
+            animate={reduceMotion ? undefined : { x: [0, 18, 0], y: [0, -10, 0], scale: [1, 1.08, 1] }}
+            transition={{ duration: 12, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+          />
+          <motion.div
+            aria-hidden="true"
+            className="absolute bottom-24 right-[18%] h-56 w-56 rounded-full bg-orange-400/15 blur-3xl"
+            animate={reduceMotion ? undefined : { x: [0, -16, 0], y: [0, 14, 0], scale: [1, 1.12, 1] }}
+            transition={{ duration: 14, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+          />
+          <motion.div
+            aria-hidden="true"
+            className="absolute right-[4%] top-24 h-64 w-64 rounded-full bg-secondary/15 blur-3xl"
+            animate={reduceMotion ? undefined : { x: [0, -14, 0], y: [0, -18, 0], scale: [1, 1.06, 1] }}
+            transition={{ duration: 16, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+          />
 
           <div className="relative mx-auto grid max-w-container-max gap-10 px-4 pb-6 pt-10 md:px-margin-desktop lg:min-h-[720px] lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:pb-0">
-            <div className="z-10 max-w-3xl">
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+            <motion.div className="z-10 max-w-3xl" initial="hidden" animate="show" variants={staggerContainer}>
+              <motion.span variants={fadeUpVariants} className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
                 <ShieldCheck size={18} />
                 Trusted student marketplace for AMU
-              </span>
+              </motion.span>
 
-              <h1 className="mt-8 font-display text-5xl font-extrabold leading-[1.08] tracking-tight text-on-surface sm:text-6xl lg:text-7xl">
+              <motion.h1 variants={fadeUpVariants} className="mt-8 font-display text-5xl font-extrabold leading-[1.08] tracking-tight text-on-surface sm:text-6xl lg:text-7xl">
                 Browse the best <span className="text-primary">campus deals</span> before someone else does.
-              </h1>
+              </motion.h1>
 
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-on-surface-variant">
+              <motion.p variants={fadeUpVariants} className="mt-6 max-w-2xl text-lg leading-8 text-on-surface-variant">
                 Explore student-listed books, electronics, cycles, and room essentials around Aligarh Muslim University. Save money, chat directly, and close the deal on campus.
-              </p>
+              </motion.p>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/?view=deals&mode=buy"
-                  className="inline-flex h-14 items-center justify-center gap-3 rounded-xl action-gradient px-7 text-base font-bold text-white shadow-[0_18px_34px_rgba(59,61,229,0.28)] transition-transform hover:-translate-y-0.5"
-                >
-                  Explore Deals
-                  <ArrowRight size={20} />
-                </Link>
-                <Link
-                  href="/?mode=sell"
-                  className="inline-flex h-14 items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-white px-7 text-base font-bold text-on-surface shadow-sm transition-colors hover:text-primary"
-                >
-                  <Tag size={20} />
-                  Sell Something
-                </Link>
-              </div>
+              <motion.div variants={fadeUpVariants} className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }}>
+                  <Link
+                    href="/?view=deals&mode=buy"
+                    className="inline-flex h-14 items-center justify-center gap-3 rounded-xl action-gradient px-7 text-base font-bold text-white shadow-[0_18px_34px_rgba(59,61,229,0.28)]"
+                  >
+                    Explore Deals
+                    <ArrowRight size={20} />
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }}>
+                  <Link
+                    href="/?mode=sell"
+                    className="inline-flex h-14 items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-white px-7 text-base font-bold text-on-surface shadow-sm transition-colors hover:text-primary"
+                  >
+                    <Tag size={20} />
+                    Sell Something
+                  </Link>
+                </motion.div>
+              </motion.div>
 
-              <div className="mt-8 grid gap-3 text-sm font-medium text-on-surface-variant sm:grid-cols-3">
+              <motion.div variants={staggerContainer} className="mt-8 grid gap-3 text-sm font-medium text-on-surface-variant sm:grid-cols-3">
                 {[
                   [ShieldCheck, "Verified students only"],
                   [CheckCircle2, "No markup"],
@@ -276,16 +346,21 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 ].map(([Icon, label]) => {
                   const FeatureIcon = Icon as typeof ShieldCheck
                   return (
-                    <div key={label as string} className="flex items-center gap-3">
+                    <motion.div key={label as string} variants={fadeUpVariants} className="flex items-center gap-3">
                       <FeatureIcon size={22} className="text-primary" />
                       <span>{label as string}</span>
-                    </div>
+                    </motion.div>
                   )
                 })}
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
-            <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] bg-primary/10 shadow-[0_30px_70px_rgba(28,22,207,0.14)] lg:min-h-[640px]">
+            <motion.div
+              className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] bg-primary/10 shadow-[0_30px_70px_rgba(28,22,207,0.14)] lg:min-h-[640px]"
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+            >
               <Image
                 src="/illustrations/buykarlo-campus-trust.png"
                 alt="AMU students using BuyKarlo for trusted campus exchange"
@@ -296,7 +371,12 @@ export default function HomePage({ searchParams }: HomePageProps) {
               />
               <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/30 to-primary/10" />
 
-              <div className="absolute right-4 top-8 w-[min(78%,310px)] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_18px_38px_rgba(25,28,32,0.14)] backdrop-blur md:right-8">
+              <motion.div
+                className="absolute right-4 top-8 w-[min(78%,310px)] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_18px_38px_rgba(25,28,32,0.14)] backdrop-blur md:right-8"
+                animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
+                transition={{ duration: 5.4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                whileHover={reduceMotion ? undefined : { y: -10, scale: 1.015 }}
+              >
                 <div className="flex gap-3">
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-surface-container-low text-primary">
                     <BookOpen size={30} />
@@ -310,9 +390,14 @@ export default function HomePage({ searchParams }: HomePageProps) {
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="absolute right-6 top-[12.5rem] w-[min(76%,300px)] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_18px_38px_rgba(25,28,32,0.13)] backdrop-blur md:right-20">
+              <motion.div
+                className="absolute right-6 top-[12.5rem] w-[min(76%,300px)] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_18px_38px_rgba(25,28,32,0.13)] backdrop-blur md:right-20"
+                animate={reduceMotion ? undefined : { y: [0, 7, 0] }}
+                transition={{ duration: 6.1, delay: 0.4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                whileHover={reduceMotion ? undefined : { y: -6, scale: 1.015 }}
+              >
                 <div className="flex gap-3">
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-surface-container-low text-primary">
                     <Bike size={32} />
@@ -325,9 +410,13 @@ export default function HomePage({ searchParams }: HomePageProps) {
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="absolute bottom-40 right-4 flex w-[min(82%,330px)] items-center gap-4 rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_18px_38px_rgba(25,28,32,0.13)] backdrop-blur md:right-10">
+              <motion.div
+                className="absolute bottom-40 right-4 flex w-[min(82%,330px)] items-center gap-4 rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_18px_38px_rgba(25,28,32,0.13)] backdrop-blur md:right-10"
+                animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
+                transition={{ duration: 5.8, delay: 0.8, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+              >
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-white">
                   <MessageCircle size={22} />
                 </div>
@@ -335,9 +424,32 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   <p className="font-bold text-on-surface">New message</p>
                   <p className="mt-1 text-sm text-on-surface-variant">Is this still available?</p>
                 </div>
+              </motion.div>
+
+              <div className="absolute left-4 top-6 flex w-[min(72%,290px)] flex-col gap-2 md:left-8">
+                <AnimatePresence initial={false}>
+                  {HERO_NOTIFICATIONS.slice(0, reduceMotion ? 2 : visibleNotificationCount).map((notification, index) => (
+                    <motion.div
+                      key={notification}
+                      layout
+                      initial={{ opacity: 0, y: 12, scale: 0.94 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                      className="rounded-2xl border border-white/70 bg-white/90 px-3 py-2 text-xs font-bold text-on-surface shadow-[0_12px_26px_rgba(25,28,32,0.12)] backdrop-blur"
+                      style={{ marginLeft: index * 8 }}
+                    >
+                      {notification}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
 
-              <div className="absolute bottom-10 left-4 right-4 rounded-3xl border border-white/70 bg-white/90 p-5 shadow-[0_18px_38px_rgba(25,28,32,0.14)] backdrop-blur md:left-auto md:w-[390px]">
+              <motion.div
+                className="absolute bottom-10 left-4 right-4 rounded-3xl border border-white/70 bg-white/90 p-5 shadow-[0_18px_38px_rgba(25,28,32,0.14)] backdrop-blur md:left-auto md:w-[390px]"
+                animate={reduceMotion ? undefined : { y: [0, 6, 0] }}
+                transition={{ duration: 6.6, delay: 0.2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+              >
                 <div className="flex items-center gap-4">
                   <div className="flex -space-x-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-primary/10 text-primary">
@@ -349,35 +461,43 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   </div>
                   <div>
                     <p className="text-xl font-extrabold text-on-surface">2,000+ AMU students</p>
-                    <p className="text-sm text-on-surface-variant">buying and selling daily</p>
+                    <div className="mt-1 h-5 overflow-hidden text-sm text-on-surface-variant">
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.p
+                          key={reduceMotion ? HERO_ACTIVITY[0] : HERO_ACTIVITY[activityIndex]}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.28 }}
+                        >
+                          {reduceMotion ? "buying and selling daily" : HERO_ACTIVITY[activityIndex]}
+                        </motion.p>
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </div>
 
           <div className="relative mx-auto max-w-container-max px-4 pb-10 md:px-margin-desktop">
-            <div className="grid gap-4 rounded-[2rem] border border-outline-variant/20 bg-white/90 p-5 shadow-[0_20px_50px_rgba(28,22,207,0.08)] backdrop-blur md:grid-cols-4 md:p-7">
-              {[
-                [GraduationCap, "10K+", "AMU Students", "bg-primary/10 text-primary"],
-                [ShieldCheck, "100%", "Verified Listings", "bg-success/10 text-success"],
-                [Tag, "50K+", "Deals Closed", "bg-pink-500/10 text-pink-500"],
-                [Users, "2K+", "Active Sellers", "bg-secondary/10 text-secondary"],
-              ].map(([Icon, value, label, tone]) => {
-                const StatIcon = Icon as typeof GraduationCap
+            <StaggerReveal className="grid gap-4 rounded-[2rem] border border-outline-variant/20 bg-white/90 p-5 shadow-[0_20px_50px_rgba(28,22,207,0.08)] backdrop-blur md:grid-cols-4 md:p-7">
+              {HERO_STATS.map(({ icon: StatIcon, end, suffix, label, tone }) => {
                 return (
-                  <div key={label as string} className="flex items-center gap-4 border-outline-variant/20 md:border-r md:last:border-r-0">
-                    <div className={cn("flex h-16 w-16 shrink-0 items-center justify-center rounded-full", tone as string)}>
+                  <motion.div key={label} variants={fadeUpVariants} className="flex items-center gap-4 border-outline-variant/20 md:border-r md:last:border-r-0">
+                    <div className={cn("flex h-16 w-16 shrink-0 items-center justify-center rounded-full", tone)}>
                       <StatIcon size={30} />
                     </div>
                     <div>
-                      <p className="text-3xl font-extrabold text-on-surface">{value as string}</p>
-                      <p className="text-base text-on-surface-variant">{label as string}</p>
+                      <p className="text-3xl font-extrabold text-on-surface">
+                        <CountUpStat end={end} suffix={suffix} />
+                      </p>
+                      <p className="text-base text-on-surface-variant">{label}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 )
               })}
-            </div>
+            </StaggerReveal>
           </div>
         </section>
       </div>
@@ -437,34 +557,36 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-      <section className="mb-6 rounded-[2rem] border border-outline-variant/20 bg-white px-5 py-5 shadow-sm md:px-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-              <ShieldCheck size={16} />
-              Verified student marketplace
-            </span>
-            <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
-              Browse the best campus deals before someone else does.
-            </h1>
-            <p className="mt-2 max-w-2xl text-base text-on-surface-variant">
-              Explore student-listed books, electronics, cycles, and room essentials around {activeCampus.split(" (")[0]}. Chat directly, negotiate smartly, and close the deal on campus.
-            </p>
+      <Reveal>
+        <section className="mb-6 rounded-[2rem] border border-outline-variant/20 bg-white px-5 py-5 shadow-sm md:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+                <ShieldCheck size={16} />
+                Verified student marketplace
+              </span>
+              <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
+                Browse the best campus deals before someone else does.
+              </h1>
+              <p className="mt-2 max-w-2xl text-base text-on-surface-variant">
+                Explore student-listed books, electronics, cycles, and room essentials around {activeCampus.split(" (")[0]}. Chat directly, negotiate smartly, and close the deal on campus.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                ["Verified", "Student-only seller identity"],
+                ["No markup", "Better value than retail"],
+                ["Local meetups", "Faster campus handoffs"],
+              ].map(([title, subtitle]) => (
+                <div key={title} className="rounded-[1.5rem] bg-surface-container-low px-4 py-4">
+                  <p className="text-base font-bold text-on-surface">{title}</p>
+                  <p className="mt-1 text-sm text-on-surface-variant">{subtitle}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              ["Verified", "Student-only seller identity"],
-              ["No markup", "Better value than retail"],
-              ["Local meetups", "Faster campus handoffs"],
-            ].map(([title, subtitle]) => (
-              <div key={title} className="rounded-[1.5rem] bg-surface-container-low px-4 py-4">
-                <p className="text-base font-bold text-on-surface">{title}</p>
-                <p className="mt-1 text-sm text-on-surface-variant">{subtitle}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      </Reveal>
 
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
@@ -474,9 +596,10 @@ export default function HomePage({ searchParams }: HomePageProps) {
         </aside>
 
         <div className="space-y-6">
+          <Reveal>
           <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-4 shadow-sm md:p-6">
-            <div className="relative flex items-center rounded-full border border-outline-variant/20 bg-surface-container-low px-5 py-3 shadow-sm">
-              <Search size={20} className="text-on-surface-variant/60" />
+            <div className="relative flex items-center rounded-full border border-outline-variant/20 bg-surface-container-low px-5 py-3 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all duration-200">
+              <Search size={20} className="text-on-surface-variant/60 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
@@ -484,8 +607,17 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 placeholder="Search within all listings..."
                 className="w-full bg-transparent px-4 text-base text-on-surface outline-none placeholder:text-on-surface-variant/60"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="p-1 hover:bg-surface-container rounded-full text-on-surface-variant cursor-pointer shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
+            {/* Mobile Horizontal scroll Categories */}
             <div className="mt-4 flex flex-wrap gap-2 lg:hidden">
               {CATEGORIES.map((categoryItem) => {
                 const Icon = categoryItem.icon
@@ -495,8 +627,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
                     key={categoryItem.id}
                     onClick={() => setSelectedCategory(categoryItem.id)}
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
-                      isActive ? "bg-primary text-white" : "bg-surface-container-low text-on-surface-variant"
+                      "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
+                      isActive ? "bg-primary text-white shadow-sm" : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
                     )}
                   >
                     <Icon size={14} />
@@ -506,80 +638,127 @@ export default function HomePage({ searchParams }: HomePageProps) {
               })}
             </div>
 
-            <div className="mt-5 flex flex-col gap-4 border-t border-outline-variant/10 pt-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-lg font-semibold text-on-surface">
+            {/* Unified Search & Filters Control Row */}
+            <div className="mt-5 flex flex-col gap-4 border-t border-outline-variant/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-base font-semibold text-on-surface">
                   <span className="font-extrabold">{processedListings.length}</span> listings found
                 </p>
-                <div className="hidden h-5 w-px bg-outline-variant/30 xl:block" />
-                {SORT_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => setSortBy(option.id)}
-                    className={cn(
-                      "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
-                      sortBy === option.id
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-outline-variant/15 bg-surface-container-low text-on-surface-variant hover:text-on-surface"
-                    )}
+                {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+                  <>
+                    <div className="hidden h-4 w-px bg-outline-variant/30 sm:block" />
+                    <button
+                      onClick={resetFilters}
+                      className="text-xs font-bold text-primary hover:text-secondary hover:underline transition-colors cursor-pointer"
+                    >
+                      Reset Filters
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Clean Sorting and Filters Actions */}
+              <div className="flex items-center gap-2 sm:self-auto self-end">
+                {/* Clean HTML Select for Sorting (Responsive & accessible) */}
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="appearance-none rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2 pr-9 text-xs font-bold text-on-surface-variant outline-none hover:bg-surface-container-high hover:border-outline-variant/50 transition-all cursor-pointer"
                   >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsMobileFiltersOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-outline-variant/20 bg-surface-container-low px-4 py-2 text-sm font-semibold text-on-surface-variant lg:hidden"
-                >
-                  <Filter size={16} />
-                  Filters
-                </button>
-                <div className="inline-flex items-center gap-2 rounded-full bg-surface-container-low p-1">
-                  <button className="rounded-2xl bg-primary/10 p-3 text-primary">
-                    <SlidersHorizontal size={18} />
-                  </button>
-                  <button className="rounded-2xl p-3 text-on-surface-variant/60">
-                    <Filter size={18} />
-                  </button>
+                    <option value="latest">Latest Deals</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline pointer-events-none" />
                 </div>
+
+                {/* Filters Toggle Button */}
+                <button
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      setIsMobileFiltersOpen(true)
+                    } else {
+                      setIsFiltersExpanded(!isFiltersExpanded)
+                    }
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer",
+                    isFiltersExpanded || ((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-outline-variant/30 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
+                  )}
+                  title="Advanced Filters"
+                >
+                  <Filter size={14} />
+                  <span>Filters</span>
+                  {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[9px] font-extrabold text-white">
+                      {(selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <span className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant/70">Condition</span>
-              {CONDITION_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => setSelectedCondition(option.id)}
-                  className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
-                    selectedCondition === option.id
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-outline-variant/15 bg-surface-container-low text-on-surface-variant"
-                  )}
+            {/* Desktop Slide-Down Collapsible Advanced Filters panel */}
+            <AnimatePresence>
+              {isFiltersExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="overflow-hidden border-t border-outline-variant/10 mt-4"
                 >
-                  {option.label}
-                </button>
-              ))}
-              <span className="ml-2 text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant/70">Price</span>
-              {PRICE_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => setSelectedPriceRange(option.id)}
-                  className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
-                    selectedPriceRange === option.id
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-outline-variant/15 bg-surface-container-low text-on-surface-variant"
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-surface-container-low/40 rounded-2xl p-5 border border-outline-variant/20 mt-4">
+                    {/* Condition Sub-group */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">Item Condition</p>
+                      <div className="flex flex-wrap gap-2">
+                        {CONDITION_OPTIONS.map((option) => (
+                          <button
+                            key={option.id}
+                            onClick={() => setSelectedCondition(option.id)}
+                            className={cn(
+                              "rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
+                              selectedCondition === option.id
+                                ? "border-primary/40 bg-primary/10 text-primary font-bold shadow-sm"
+                                : "border-outline-variant/15 bg-white text-on-surface-variant hover:bg-surface-container"
+                            )}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Price Range Sub-group */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">Price Limit</p>
+                      <div className="flex flex-wrap gap-2">
+                        {PRICE_OPTIONS.map((option) => (
+                          <button
+                            key={option.id}
+                            onClick={() => setSelectedPriceRange(option.id)}
+                            className={cn(
+                              "rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
+                              selectedPriceRange === option.id
+                                ? "border-primary/40 bg-primary/10 text-primary font-bold shadow-sm"
+                                : "border-outline-variant/15 bg-white text-on-surface-variant hover:bg-surface-container"
+                            )}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {isLoading
@@ -587,7 +766,11 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   <div key={index} className="h-[420px] animate-pulse rounded-[2rem] border border-outline-variant/20 bg-white" />
                 ))
               : processedListings.length > 0
-                ? processedListings.map((listing) => <ListingCard key={listing.id} {...listing} />)
+                ? processedListings.map((listing) => (
+                    <div key={listing.id}>
+                      <ListingCard {...listing} />
+                    </div>
+                  ))
                 : (
                   <div className="col-span-full rounded-[2rem] border border-outline-variant/15 bg-white px-6 py-16 text-center shadow-sm">
                     <p className="text-lg font-semibold text-on-surface">No listings match these filters yet.</p>

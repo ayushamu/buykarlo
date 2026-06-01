@@ -6,23 +6,23 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { ShieldCheck, Mail, Lock, Key, ArrowLeft, Eye, EyeOff, RotateCcw } from "lucide-react"
+import { ShieldCheck, Mail, Key, ArrowLeft, RotateCcw } from "lucide-react"
+import { AuthLayout } from "@/components/auth/AuthLayout"
 
 export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2>(1) // 1 = Registration form, 2 = Email OTP verification
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [emailOtp, setEmailOtp] = useState("")
   const [isFocused, setIsFocused] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
   const [resendSuccess, setResendSuccess] = useState(false)
   
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     if (resendCountdown > 0) {
@@ -39,9 +39,12 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: "signup",
-        email: email,
+      const { error: resendError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        }
       })
 
       if (resendError) {
@@ -57,32 +60,18 @@ export default function RegisterPage() {
       setLoading(false)
     }
   }
-  
-  const router = useRouter()
-  const supabase = createClient()
 
   // Handle Registration Submit (Step 1)
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.")
-      return
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.")
-      return
-    }
-
     setLoading(true)
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
+          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         }
       })
@@ -91,16 +80,8 @@ export default function RegisterPage() {
         throw signUpError
       }
 
-      // If user is already logged in (verification disabled in Supabase)
-      if (data.session) {
-        setSuccess(true)
-        setTimeout(() => {
-          router.push("/onboarding")
-        }, 1500)
-      } else {
-        // Verification enabled, go to Step 2
-        setStep(2)
-      }
+      // Verification OTP code is sent, go to Step 2
+      setStep(2)
     } catch (err: any) {
       setError(err.message || "An error occurred during registration.")
     } finally {
@@ -123,7 +104,7 @@ export default function RegisterPage() {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: emailOtp,
-        type: "signup"
+        type: "email"
       })
 
       if (verifyError) {
@@ -143,12 +124,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-radial from-background via-surface-container-low to-surface-dim relative overflow-hidden">
-      {/* Background ambient light */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-secondary/5 blur-[120px]" />
-
-      <div className="w-full max-w-md glass-panel border border-border/40 rounded-3xl p-8 premium-shadow relative z-10 animate-fade-in-up">
+    <AuthLayout step={1} stepTitle="Join BuyKarlo">
+      <div className="w-full text-left">
         {step === 2 && (
           <button
             type="button"
@@ -156,36 +133,33 @@ export default function RegisterPage() {
               setStep(1)
               setError(null)
             }}
-            className="inline-flex items-center gap-1 text-sm font-bold text-on-surface-variant hover:text-foreground mb-6 transition-all"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-on-surface-variant hover:text-foreground mb-6 transition-all"
             disabled={loading}
           >
-            <ArrowLeft className="size-4" /> Change Email / Password
+            <ArrowLeft className="size-3.5" /> Change Email
           </button>
         )}
 
-        {/* Logo and Header */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="size-16 rounded-2xl action-gradient flex items-center justify-center text-white mb-4 shadow-accent">
-            <ShieldCheck className="size-8" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground text-center">
+        {/* Header */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-black tracking-tight text-slate-800">
             {step === 1 ? "Join BuyKarlo" : "Verify Your Email"}
-          </h1>
-          <p className="text-sm text-on-surface-variant mt-2 text-center">
+          </h2>
+          <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
             {step === 1
-              ? "Create an account to buy & sell within your campus"
+              ? "Create an account to buy & sell within your verified campus community."
               : `We sent a 6-digit confirmation code to ${email}`}
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-semibold">
+          <div className="mb-6 p-4 rounded-xl bg-error/10 border border-error/20 text-error text-xs font-semibold">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 rounded-xl bg-success/10 border border-success/20 text-success text-sm font-semibold text-center">
+          <div className="mb-6 p-4 rounded-xl bg-success/10 border border-success/20 text-success text-xs font-semibold text-center">
             {step === 1 
               ? "Registration successful! Redirecting..." 
               : "Email verified successfully! Redirecting..."}
@@ -196,8 +170,8 @@ export default function RegisterPage() {
           /* Step 1: Registration form */
           <form onSubmit={handleRegister} className="space-y-5">
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-1.5 px-1">
-                <Mail className="size-4 text-on-surface-variant" /> Email Address
+              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 px-1">
+                <Mail className="size-3.5 text-on-surface-variant" /> Email Address
               </label>
               <Input
                 type="email"
@@ -207,59 +181,9 @@ export default function RegisterPage() {
                 required
                 disabled={loading || success}
               />
-              <p className="text-[11px] text-on-surface-variant px-1 mt-1">
-                Academic domains (.edu, .ac.in) automatically receive a "Student Verified" badge.
+              <p className="text-[10px] text-on-surface-variant px-1 mt-1 leading-normal italic">
+                Using an academic domain (.edu, .ac.in) automatically verifies your student network profile.
               </p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-1.5 px-1">
-                <Lock className="size-4 text-on-surface-variant" /> Password
-              </label>
-              <div className="relative flex items-center">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pr-12 w-full"
-                  required
-                  disabled={loading || success}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 text-on-surface-variant hover:text-foreground transition-colors focus:outline-none"
-                  disabled={loading || success}
-                >
-                  {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-1.5 px-1">
-                <Lock className="size-4 text-on-surface-variant" /> Confirm Password
-              </label>
-              <div className="relative flex items-center">
-                <Input
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pr-12 w-full"
-                  required
-                  disabled={loading || success}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 text-on-surface-variant hover:text-foreground transition-colors focus:outline-none"
-                  disabled={loading || success}
-                >
-                  {showConfirmPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
-              </div>
             </div>
 
             <Button
@@ -270,7 +194,7 @@ export default function RegisterPage() {
               {loading ? (
                 <span className="inline-block size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                "Sign Up"
+                "Get OTP Code"
               )}
             </Button>
           </form>
@@ -278,12 +202,12 @@ export default function RegisterPage() {
           /* Step 2: Email OTP verification */
           <form onSubmit={handleVerifyEmail} className="space-y-6">
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-foreground flex items-center justify-center gap-1.5 px-1">
-                <Key className="size-4 text-on-surface-variant" /> Enter 6-Digit Email Code
+              <label className="text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 px-1">
+                <Key className="size-3.5 text-on-surface-variant" /> Enter 6-Digit Email Code
               </label>
               
               <div className="relative w-full max-w-[320px] mx-auto h-14">
-                {/* Real input overlay (completely invisible but handles input/paste/autofill) */}
+                {/* Real input overlay */}
                 <input
                   type="text"
                   inputMode="numeric"
@@ -307,11 +231,11 @@ export default function RegisterPage() {
                     return (
                       <div
                         key={i}
-                        className={`flex items-center justify-center text-xl font-mono font-bold rounded-xl border-[1.5px] bg-surface/50 transition-all duration-150 ${
+                        className={`flex items-center justify-center text-xl font-mono font-bold rounded-xl border-[1.5px] bg-slate-50 transition-all duration-150 ${
                           digit
                             ? "border-primary text-foreground scale-[1.02] shadow-sm"
                             : isActive
-                            ? "border-primary ring-[3px] ring-primary/15 scale-[1.02] bg-surface"
+                            ? "border-primary ring-[3px] ring-primary/15 scale-[1.02] bg-white"
                             : "border-border text-on-surface-variant"
                         }`}
                       >
@@ -366,8 +290,8 @@ export default function RegisterPage() {
         )}
 
         {step === 1 && (
-          <div className="mt-8 text-center border-t border-border/20 pt-6">
-            <p className="text-sm text-on-surface-variant">
+          <div className="mt-8 pt-6 border-t border-border/20">
+            <p className="text-xs text-on-surface-variant">
               Already have an account?{" "}
               <Link
                 href="/login"
@@ -379,6 +303,6 @@ export default function RegisterPage() {
           </div>
         )}
       </div>
-    </div>
+    </AuthLayout>
   )
 }

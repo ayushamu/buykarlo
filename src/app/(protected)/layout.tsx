@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from "@/components/layouts/AppHeader"
+import { BuyKarloSellerBot } from "@/components/ai/BuyKarloSellerBot"
 import { MobileNav } from "@/components/layouts/MobileNav"
 import { Suspense } from "react"
 
@@ -33,6 +34,7 @@ export default async function ProtectedLayout({
       <Suspense fallback={<div className="h-16 w-full border-t border-outline-variant/30 bg-surface" />}>
         <MobileNav />
       </Suspense>
+      <BuyKarloSellerBot />
     </div>
   )
 }

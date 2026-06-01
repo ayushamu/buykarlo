@@ -30,6 +30,7 @@ import {
   Check
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MarkSoldModal } from "@/components/seller/MarkSoldModal"
 
 function MessagesContent() {
   const router = useRouter()
@@ -43,6 +44,7 @@ function MessagesContent() {
   const queryDraft = searchParams.get("draft")
 
   // State
+  const [markSoldOpen, setMarkSoldOpen] = useState(false)
   const [conversations, setConversations] = useState<any[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
   const [messages, setMessages] = useState<any[]>([])
@@ -570,13 +572,13 @@ function MessagesContent() {
               {/* Chat Actions */}
               <div className="flex items-center gap-stack-sm shrink-0">
                 {activeListing?.status !== "sold" && !activeConversation.isBuyer && (
-                  <Link
-                    href="/dashboard/listings"
+                  <button
+                    onClick={() => setMarkSoldOpen(true)}
                     className="hidden sm:flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-full font-body text-label-sm font-semibold transition-all cursor-pointer"
                   >
                     <CheckCircle size={14} />
                     Mark Sold
-                  </Link>
+                  </button>
                 )}
                 {activeListing && (
                   <Link
@@ -962,6 +964,31 @@ function MessagesContent() {
             </div>
           </div>
         </aside>
+      )}
+      {/* Mark Sold Modal */}
+      {activeListing && (
+        <MarkSoldModal
+          isOpen={markSoldOpen}
+          onClose={() => setMarkSoldOpen(false)}
+          listingId={activeListing.id}
+          listingTitle={activeListing.title}
+          onSuccess={() => {
+            setConversations((prev) =>
+              prev.map((c) => {
+                if (c.id === activeConvId) {
+                  return {
+                    ...c,
+                    listing: {
+                      ...c.listing,
+                      status: "sold"
+                    }
+                  }
+                }
+                return c
+              })
+            )
+          }}
+        />
       )}
     </div>
   )

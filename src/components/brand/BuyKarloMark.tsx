@@ -26,7 +26,6 @@ export function BuyKarloMark({ className, title = "BuyKarlo" }: BuyKarloMarkProp
         </filter>
       </defs>
 
-      <rect x="8" y="8" width="112" height="112" rx="30" fill="white" />
       <g filter="url(#buykarlo-shadow)">
         <path
           d="M46 36c0-14.36 11.64-26 26-26s26 11.64 26 26v13.5h-12V36c0-7.73-6.27-14-14-14s-14 6.27-14 14v13.5H46V36Z"

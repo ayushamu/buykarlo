@@ -10,6 +10,7 @@ import {
   SellerSectionHeader,
   type SellerListingItem,
 } from "@/components/seller/SellerPrimitives"
+import { MarkSoldModal } from "@/components/seller/MarkSoldModal"
 
 const tabs = [
   { label: "All", value: "all" },
@@ -37,6 +38,10 @@ export default function MyListingsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  
+  // Mark Sold Modal State
+  const [markSoldOpen, setMarkSoldOpen] = useState(false)
+  const [markSoldListing, setMarkSoldListing] = useState<{ id: string; title: string } | null>(null)
 
   async function loadListingsData() {
     try {
@@ -62,6 +67,15 @@ export default function MyListingsPage() {
   }, [])
 
   async function updateStatus(id: string, status: "active" | "sold" | "hidden") {
+    if (status === "sold") {
+      const listing = listings.find((l) => l.id === id)
+      if (listing) {
+        setMarkSoldListing({ id: listing.id, title: listing.title })
+        setMarkSoldOpen(true)
+      }
+      return
+    }
+
     try {
       setActionLoading(id)
       const res = await updateListingStatus(id, status)
@@ -210,6 +224,18 @@ export default function MyListingsPage() {
             />
           ))}
         </section>
+      )}
+      {markSoldListing && (
+        <MarkSoldModal
+          isOpen={markSoldOpen}
+          onClose={() => {
+            setMarkSoldOpen(false)
+            setMarkSoldListing(null)
+          }}
+          listingId={markSoldListing.id}
+          listingTitle={markSoldListing.title}
+          onSuccess={loadListingsData}
+        />
       )}
     </div>
   )

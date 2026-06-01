@@ -69,6 +69,30 @@ export function ProductInteraction({
   const [isSaved, setIsSaved] = useState(isInitiallySaved)
   const [compareItems, setCompareItems] = useState<CompareItem[]>([])
 
+  // Image zoom-on-hover interaction states
+  const [isHovered, setIsHovered] = useState(false)
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 })
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch") return
+    const container = e.currentTarget
+    const rect = container.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setZoomPos({ x, y })
+  }
+
+  const handlePointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch") return
+    setIsHovered(true)
+  }
+
+  const handlePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch") return
+    setIsHovered(false)
+    setZoomPos({ x: 50, y: 50 })
+  }
+
   const compareItem = useMemo<CompareItem>(
     () => ({
       id: listingId,
@@ -204,13 +228,22 @@ export function ProductInteraction({
             </div>
 
             {hasImages ? (
-              <div className="relative aspect-[4/3] w-full bg-surface-container-low">
+              <div
+                onPointerMove={handlePointerMove}
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
+                className="relative aspect-[4/3] w-full bg-surface-container-low overflow-hidden cursor-zoom-in"
+              >
                 <Image
                   src={imageUrls[activeImageIndex]}
                   alt={title}
                   fill
                   priority
-                  className="object-cover"
+                  style={{
+                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                    transform: isHovered ? "scale(2)" : "scale(1)",
+                  }}
+                  className="object-cover transition-transform duration-[150ms] ease-out will-change-transform motion-reduce:transition-none motion-reduce:transform-none"
                 />
               </div>
             ) : (
@@ -341,7 +374,7 @@ export function ProductInteraction({
             <div className="mt-5 border-t border-outline-variant/15 pt-5">
               <div className="rounded-[1.5rem] border border-outline-variant/15 bg-surface-container-low/30 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">About this item</p>
-                <p className="mt-3 text-[15px] leading-7 text-on-surface-variant md:text-base md:leading-8">
+                <p className="mt-3 text-[15px] leading-7 text-on-surface-variant md:text-base md:leading-8 whitespace-pre-wrap">
                   {description || "No additional description provided by the seller."}
                 </p>
               </div>

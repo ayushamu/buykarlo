@@ -38,18 +38,33 @@ BuyKarlo 2.0 is a trust-scaped, campus-scoped peer-to-peer (P2P) student marketp
 ## 4. Key Developer Modules
 1. **Onboarding Guard & Redirect**:
    - Handled inside [proxy.ts](file:///Users/ayush/Downloads/buykarlo%202.0/src/proxy.ts). Logged-in users who haven't completed onboarding profiles (with phone and full name) are automatically forced onto `/onboarding`.
-2. **Product Upload Route (`/sell`)**:
+2. **Authentication Flow (Frictionless / Stitch System)**:
+   - Split-screen premium layout wrapper: [AuthLayout.tsx](file:///Users/ayush/Downloads/buykarlo%202.0/src/components/auth/AuthLayout.tsx).
+   - Minimal Friction Sign Up: `register/page.tsx` takes email, verifies it via email OTP first, then redirects to onboarding.
+   - Credentials + Passcode Login: `login/page.tsx` supports Email + Password as primary and passwordless OTP verification as secondary.
+   - Eye toggles for password visibility: Included in all password forms (Login, Onboarding, Reset Password).
+   - Password Recovery: `forgot-password/page.tsx` requests a reset email; `reset-password/page.tsx` updates it via auth callback `src/app/auth/callback/route.ts`.
+3. **Product Upload Route (`/sell`)**:
    - Fetches upload URLs via a pre-signed handler at [route.ts](file:///Users/ayush/Downloads/buykarlo%202.0/src/app/api/storage/presign/route.ts) and uploads raw binary images directly to Cloudflare R2 before recording URLs to `listing_images` table.
-3. **Seller Dashboard (`/dashboard`)**:
+4. **Seller Dashboard (`/dashboard`)**:
    - Implemented as a bento card layout at [page.tsx](file:///Users/ayush/Downloads/buykarlo%202.0/src/app/(protected)/dashboard/page.tsx). It lets sellers pause listings (deactivate), resume them, mark as sold (increments earnings calculations), delete them, and links listing rows to chat negotiations.
-4. **Marketplace Feed (`/`)**:
+5. **Marketplace Feed (`/`)**:
    - Loads dynamic list items directly from Supabase via `getActiveListings()` server action inside [page.tsx](file:///Users/ayush/Downloads/buykarlo%202.0/src/app/(marketplace)/page.tsx).
+6. **Trust Score & Verification Systems**:
+   - Initial user score is set to `50`.
+   - Verification Hub on user profile ([ProfileClient.tsx](file:///Users/ayush/Downloads/buykarlo%202.0/src/app/(protected)/profile/ProfileClient.tsx)) allows:
+     * College Institutional Email verification code simulation (**+20 points** to trust score).
+     * Student ID Card photo upload to R2 (`/api/storage/presign` with `{ type: "id_card" }` payload) generating a pending request in `public.verifications`.
+   - Admin Queue (`/admin/verifications`): Allows admin validation. Approving ID verifications awards **+30 points** to user's trust score and sets profile to `"verified"`.
+   - Deal Completion Boost: Marking a listing as "sold" awards **+5 points** to the seller's trust score (capped at 100).
 
 ---
 
 ## 5. Critical Guidelines & Best Practices
 - **Next.js Image Whitelist**: Whenever whitelisting new image domains, configure them inside `images.remotePatterns` in [next.config.ts](file:///Users/ayush/Downloads/buykarlo%202.0/next.config.ts). Currently, Google avatars and Cloudflare R2 subdomains are authorized.
 - **Frictionless Onboarding**: WhatsApp OTP checks are disabled. Phone numbers are verified natively directly inside `/onboarding` without external gateways to prevent SMS bottlenecks.
+- **Supabase Relation Joins**: Supabase relationships on 1-to-1 queries (e.g. `user:user_id(...)`) can return arrays instead of objects in JS. Parse properly using `Array.isArray(v.user) ? v.user[0] : (v.user || null)`.
+- **OTP verification types**: When using `verifyOtp` to verify code sent via `signInWithOtp` (passwordless login), make sure to specify type `"email"`.
 - **Compilation Check**: Before committing your code, always test the production assembly:
   ```bash
   npm run build

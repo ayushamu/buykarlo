@@ -4,6 +4,17 @@ import { useState, useTransition } from "react"
 import { Shield, Settings, ShieldAlert, CheckCircle2, Users, Loader2, MapPin } from "lucide-react"
 import { setUserAdminStatusByEmail, setUserTrustScoreByEmail } from "@/features/admin/actions"
 import { cn } from "@/lib/utils"
+import { CAMPUSES } from "@/lib/constants"
+
+const CAMPUS_DESCRIPTIONS: Record<string, string> = {
+  "Aligarh Muslim University (AMU)": "Default campus scope. Full R2 storage and student profiles active.",
+  "Delhi University (DU)": "Standard scoping active. Student identity confirmations verified.",
+  "Jamia Millia Islamia (JMI)": "Standard scoping active. Student identity confirmations verified.",
+  "UPES Dehradun": "Pending student registration triggers.",
+  "Jawaharlal Nehru University (JNU)": "Authentication scope integrations pending.",
+  "Banaras Hindu University (BHU)": "DB RLS rules setup pending.",
+  "BITS Pilani": "Campus deployment testing."
+}
 
 export default function AdminSettingsPage() {
   const [emailForAdmin, setEmailForAdmin] = useState("")
@@ -55,15 +66,11 @@ export default function AdminSettingsPage() {
     })
   }
 
-  const campuses = [
-    { name: "Aligarh Muslim University (AMU)", status: "Active", description: "Default campus scope. Full R2 storage and student profiles active." },
-    { name: "Delhi University (DU)", status: "Active", description: "Standard scoping active. Student identity confirmations verified." },
-    { name: "Jamia Millia Islamia (JMI)", status: "Active", description: "Standard scoping active. Student identity confirmations verified." },
-    { name: "UPES Dehradun", status: "Coming Soon", description: "Pending student registration triggers." },
-    { name: "Jawaharlal Nehru University (JNU)", status: "Coming Soon", description: "Authentication scope integrations pending." },
-    { name: "Banaras Hindu University (BHU)", status: "Coming Soon", description: "DB RLS rules setup pending." },
-    { name: "BITS Pilani", status: "Coming Soon", description: "Campus deployment testing." },
-  ]
+  const campuses = CAMPUSES.map(c => ({
+    name: c.name,
+    status: c.active ? "Active" : "Coming Soon",
+    description: CAMPUS_DESCRIPTIONS[c.name] || "Pending authentication scope integrations."
+  }))
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
