@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params
-  const listing = await getListingBySlug(slug)
+  const listing = await getListingBySlug(slug, true)
 
   if (!listing) {
     notFound()
@@ -108,6 +108,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
+    sku: listing.id,
     name: listing.title,
     image: listing.imageUrls && listing.imageUrls.length > 0 ? listing.imageUrls : [],
     description: listing.description,
@@ -116,8 +117,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
       price: listing.price,
       priceCurrency: "INR",
       availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: 
+        listing.condition === "new" 
+          ? "https://schema.org/NewCondition" 
+          : listing.condition === "like_new"
+          ? "https://schema.org/RefurbishedCondition"
+          : "https://schema.org/UsedCondition",
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       url: `https://buykarlo.in/item/${listing.slug}`,
+      seller: listing.seller ? {
+        "@type": "Person",
+        name: listing.seller.fullName,
+        homeLocation: {
+          "@type": "Place",
+          name: listing.seller.university || "Aligarh Muslim University (AMU)"
+        }
+      } : undefined
     },
     category: listing.categoryName,
     brand: {
@@ -146,6 +161,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         listingId={listing.id}
         slug={listing.slug}
         imageUrls={listing.imageUrls}
+        videoUrl={listing.videoUrl}
         title={listing.title}
         campus={listing.campus}
         categorySlug={listing.categorySlug}

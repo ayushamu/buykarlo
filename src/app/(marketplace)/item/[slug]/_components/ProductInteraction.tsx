@@ -33,6 +33,7 @@ interface ProductInteractionProps {
   listingId: string
   slug: string
   imageUrls: string[]
+  videoUrl?: string | null
   title: string
   campus: string
   categorySlug: string
@@ -50,6 +51,7 @@ export function ProductInteraction({
   listingId,
   slug,
   imageUrls,
+  videoUrl,
   title,
   campus,
   categorySlug,
@@ -61,7 +63,20 @@ export function ProductInteraction({
   isInitiallySaved,
 }: ProductInteractionProps) {
   const router = useRouter()
-  const [activeImageIndex, setActiveImageIndex] = useState(0)
+  
+  const mediaItems = useMemo(() => {
+    const items: Array<{ type: "image" | "video"; url: string }> = []
+    if (videoUrl) {
+      items.push({ type: "video", url: videoUrl })
+    }
+    imageUrls.forEach((url) => {
+      items.push({ type: "image", url: url })
+    })
+    return items
+  }, [videoUrl, imageUrls])
+
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0)
+  const activeMedia = mediaItems[activeMediaIndex]
   const [isPending, startTransition] = useTransition()
   const [isSaving, startSaveTransition] = useTransition()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -127,7 +142,7 @@ export function ProductInteraction({
     return () => window.clearTimeout(timer)
   }, [saveMessage])
 
-  const hasImages = imageUrls.length > 0
+  const hasImages = mediaItems.length > 0
   const isCompared = compareItems.some((item) => item.id === listingId)
   const compareCount = compareItems.length
   const displayLocation = pickupContext || campus
@@ -227,25 +242,41 @@ export function ProductInteraction({
               Available
             </div>
 
-            {hasImages ? (
-              <div
-                onPointerMove={handlePointerMove}
-                onPointerEnter={handlePointerEnter}
-                onPointerLeave={handlePointerLeave}
-                className="relative aspect-[4/3] w-full bg-surface-container-low overflow-hidden cursor-zoom-in"
-              >
-                <Image
-                  src={imageUrls[activeImageIndex]}
-                  alt={title}
-                  fill
-                  priority
-                  style={{
-                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-                    transform: isHovered ? "scale(2)" : "scale(1)",
-                  }}
-                  className="object-cover transition-transform duration-[150ms] ease-out will-change-transform motion-reduce:transition-none motion-reduce:transform-none"
-                />
-              </div>
+            {activeMedia ? (
+              activeMedia.type === "video" ? (
+                <div className="relative aspect-[4/3] w-full bg-black overflow-hidden">
+                  <video
+                    src={activeMedia.url}
+                    controls
+                    controlsList="nodownload nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                    autoPlay
+                    muted
+                    playsInline
+                    loop
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div
+                  onPointerMove={handlePointerMove}
+                  onPointerEnter={handlePointerEnter}
+                  onPointerLeave={handlePointerLeave}
+                  className="relative aspect-[4/3] w-full bg-surface-container-low overflow-hidden cursor-zoom-in"
+                >
+                  <Image
+                    src={activeMedia.url}
+                    alt={title}
+                    fill
+                    priority
+                    style={{
+                      transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                      transform: isHovered ? "scale(2)" : "scale(1)",
+                    }}
+                    className="object-cover transition-transform duration-[150ms] ease-out will-change-transform motion-reduce:transition-none motion-reduce:transform-none"
+                  />
+                </div>
+              )
             ) : (
               <div className="flex aspect-[4/3] items-center justify-center bg-surface-container-low text-sm font-semibold text-on-surface-variant">
                 No product images uploaded
@@ -253,20 +284,33 @@ export function ProductInteraction({
             )}
           </div>
 
-          {hasImages && imageUrls.length > 1 ? (
+          {mediaItems.length > 1 ? (
             <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
-              {imageUrls.map((url, index) => {
-                const isActive = activeImageIndex === index
+              {mediaItems.map((item, index) => {
+                const isActive = activeMediaIndex === index
                 return (
                   <button
-                    key={`${url}-${index}`}
-                    onClick={() => setActiveImageIndex(index)}
+                    key={`${item.url}-${index}`}
+                    onClick={() => setActiveMediaIndex(index)}
                     className={cn(
-                      "relative h-20 w-20 shrink-0 overflow-hidden rounded-[1.1rem] border-2 bg-white shadow-sm transition-all md:h-24 md:w-24",
+                      "relative h-20 w-20 shrink-0 overflow-hidden rounded-[1.1rem] border-2 bg-white shadow-sm transition-all md:h-24 md:w-24 cursor-pointer",
                       isActive ? "border-primary scale-[1.02]" : "border-outline-variant/20 hover:border-primary/50"
                     )}
                   >
-                    <Image src={url} alt={`${title} thumbnail ${index + 1}`} fill className="object-cover" />
+                    {item.type === "video" ? (
+                      <div className="relative h-full w-full bg-black">
+                        <video src={item.url} muted className="h-full w-full object-cover opacity-70" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white">
+                            <svg className="h-3 w-3 fill-current text-white ml-0.5" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <Image src={item.url} alt={`${title} thumbnail ${index + 1}`} fill className="object-cover" />
+                    )}
                   </button>
                 )
               })}

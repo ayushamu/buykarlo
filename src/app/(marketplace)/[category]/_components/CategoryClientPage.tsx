@@ -11,6 +11,7 @@ import {
   Sparkles,
   ArrowLeft,
   X,
+  ChevronDown,
 } from "lucide-react"
 import { ListingCard } from "@/components/listing/ListingCard"
 import { getActiveListings } from "@/features/listings/actions"
@@ -49,11 +50,14 @@ interface Listing {
   id: string
   slug?: string
   title: string
+  description?: string
   price: number
   condition: "new" | "like_new" | "good" | "fair" | "poor"
   imageUrl?: string
   sellerDepartment?: string
   campus?: string
+  categorySlug?: string
+  keywords?: string[] | string | null
   sellerTrustScore?: number
 }
 
@@ -80,6 +84,7 @@ export default function CategoryClientPage({
   const [selectedCondition, setSelectedCondition] = useState("all")
   const [selectedPriceRange, setSelectedPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("latest")
+  const [showAllCategories, setShowAllCategories] = useState(false)
 
   // Campus awareness
   const [activeCampus, setActiveCampus] = useState(
@@ -130,12 +135,23 @@ export default function CategoryClientPage({
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      list = list.filter(
-        (l) =>
-          l.title.toLowerCase().includes(q) ||
-          (l.sellerDepartment &&
-            l.sellerDepartment.toLowerCase().includes(q))
-      )
+      list = list.filter((l) => {
+        const titleMatch = l.title?.toLowerCase().includes(q) || false
+        const descMatch = l.description?.toLowerCase().includes(q) || false
+        const catMatch = l.categorySlug?.toLowerCase().includes(q) || false
+        const deptMatch = l.sellerDepartment?.toLowerCase().includes(q) || false
+        
+        const keywordsArray = Array.isArray(l.keywords)
+          ? l.keywords
+          : typeof l.keywords === 'string'
+          ? [l.keywords]
+          : []
+        const keywordMatch = keywordsArray.some((keyword: any) =>
+          typeof keyword === 'string' && keyword.toLowerCase().includes(q)
+        )
+
+        return titleMatch || descMatch || catMatch || deptMatch || keywordMatch
+      })
     }
 
     if (selectedCondition !== "all") {
@@ -210,7 +226,7 @@ export default function CategoryClientPage({
           <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/75 mb-1">
             Categories
           </p>
-          {CATEGORIES.map((cat) => {
+          {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map((cat) => {
             const Icon = cat.icon
             const isActive = cat.id === categorySlug || (cat.id === "all" && false)
             return (
@@ -229,6 +245,15 @@ export default function CategoryClientPage({
               </Link>
             )
           })}
+          {CATEGORIES.length > 4 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-low hover:bg-surface-container px-4 py-2.5 text-xs font-bold text-on-surface-variant transition-colors cursor-pointer mt-1"
+            >
+              <span>{showAllCategories ? "Show Less" : `Show More (+${CATEGORIES.length - 4})`}</span>
+              <ChevronDown size={14} className={cn("transition-transform duration-200 text-outline-variant", showAllCategories && "rotate-180 text-primary")} />
+            </button>
+          )}
         </aside>
 
         {/* ── Mobile Categories (horizontal chips) ────────────── */}
@@ -397,8 +422,8 @@ export default function CategoryClientPage({
                 </div>
               ))
             ) : processedListings.length > 0 ? (
-              processedListings.map((listing) => (
-                <ListingCard key={listing.id} {...listing} />
+              processedListings.map((listing, index) => (
+                <ListingCard key={listing.id} {...listing} priority={index < 4} />
               ))
             ) : (
               <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4 bg-surface-container-low/40 rounded-3xl border border-outline-variant/10 px-8">

@@ -41,11 +41,12 @@ function ExploreContent() {
   const [listingsList, setListingsList] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState(categoryParam)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "")
   const [selectedCondition, setSelectedCondition] = useState("all")
   const [selectedPriceRange, setSelectedPriceRange] = useState("all")
   const [sortBy, setSortBy] = useState("latest")
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
+  const [showAllCategories, setShowAllCategories] = useState(false)
 
   // Sync category state from URL query params
   useEffect(() => {
@@ -53,6 +54,12 @@ function ExploreContent() {
       setSelectedCategory(categoryParam)
     }
   }, [categoryParam])
+
+  // Sync search state from URL query params
+  useEffect(() => {
+    const searchVal = searchParams.get("search") || ""
+    setSearchQuery(searchVal)
+  }, [searchParams])
 
   // Sync campus state from localStorage & listen for changes
   useEffect(() => {
@@ -100,10 +107,23 @@ function ExploreContent() {
     // 1. Search Query Filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      list = list.filter((l) =>
-        l.title.toLowerCase().includes(q) ||
-        (l.sellerDepartment && l.sellerDepartment.toLowerCase().includes(q))
-      )
+      list = list.filter((l) => {
+        const titleMatch = l.title?.toLowerCase().includes(q) || false
+        const descMatch = l.description?.toLowerCase().includes(q) || false
+        const catMatch = l.categorySlug?.toLowerCase().includes(q) || false
+        const deptMatch = l.sellerDepartment?.toLowerCase().includes(q) || false
+        
+        const keywordsArray = Array.isArray(l.keywords)
+          ? l.keywords
+          : typeof l.keywords === 'string'
+          ? [l.keywords]
+          : []
+        const keywordMatch = keywordsArray.some((keyword: any) =>
+          typeof keyword === 'string' && keyword.toLowerCase().includes(q)
+        )
+
+        return titleMatch || descMatch || catMatch || deptMatch || keywordMatch
+      })
     }
 
     // 2. Condition Filter
@@ -146,7 +166,7 @@ function ExploreContent() {
           <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/75 mb-1">
             Categories
           </p>
-          {CATEGORIES.map((cat) => {
+          {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map((cat) => {
             const Icon = cat.icon
             const isActive = selectedCategory === cat.id
             return (
@@ -165,6 +185,15 @@ function ExploreContent() {
               </button>
             )
           })}
+          {CATEGORIES.length > 4 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-low hover:bg-surface-container px-4 py-2.5 text-xs font-bold text-on-surface-variant transition-colors cursor-pointer mt-1"
+            >
+              <span>{showAllCategories ? "Show Less" : `Show More (+${CATEGORIES.length - 4})`}</span>
+              <ChevronDown size={14} className={cn("transition-transform duration-200 text-outline-variant", showAllCategories && "rotate-180 text-primary")} />
+            </button>
+          )}
         </aside>
 
         {/* Mobile Categories list (Horizontal scroll) - Mobile Only */}
@@ -355,8 +384,8 @@ function ExploreContent() {
                 </div>
               ))
             ) : processedListings.length > 0 ? (
-              processedListings.map((listing) => (
-                <ListingCard key={listing.id} {...listing} />
+              processedListings.map((listing, index) => (
+                <ListingCard key={listing.id} {...listing} priority={index < 4} />
               ))
             ) : (
               <div className="col-span-full py-16 text-center flex flex-col items-center justify-center space-y-3 bg-surface-container-low/40 rounded-3xl border border-outline-variant/10 w-full px-6">

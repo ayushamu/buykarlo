@@ -13,64 +13,77 @@ interface ListingCardProps {
   condition: Condition
   imageUrl?: string
   sellerDepartment?: string
+  priority?: boolean
 }
 
-export function ListingCard({ id, slug, title, price, condition, imageUrl, sellerDepartment }: ListingCardProps) {
+export function ListingCard({ id, slug, title, price, condition, imageUrl, sellerDepartment, priority = false }: ListingCardProps) {
   return (
-    <div className="h-full transition-all duration-200 hover:-translate-y-1.5 hover:scale-[1.005] active:scale-[0.99]">
+    <div className="h-full transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.005] active:scale-[0.995]">
       <Link
         href={`/item/${slug || id}`}
-        className="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-outline-variant/20 bg-white shadow-[0_14px_32px_rgba(26,38,86,0.06)] transition-shadow duration-[220ms] ease-out hover:shadow-[0_24px_48px_rgba(26,38,86,0.14)]"
+        className="group flex h-full flex-col overflow-hidden rounded-3xl border border-outline-variant/15 bg-white dark:bg-surface-container-lowest shadow-[0_8px_30px_rgba(26,38,86,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(28,22,207,0.08)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
       >
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container-low">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container-low dark:bg-surface-container-high">
           {imageUrl ? (
             <Image
               src={imageUrl}
               alt={title}
               fill
-              className="object-cover transition-transform duration-[420ms] group-hover:scale-[1.03]"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              priority={priority}
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low text-sm font-medium text-on-surface-variant">
+            <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low dark:bg-surface-container-high text-sm font-medium text-on-surface-variant">
               No image
             </div>
           )}
-          <div className="absolute left-4 top-4 z-10">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/8 via-transparent to-transparent opacity-80 pointer-events-none" />
+          
+          <div className="absolute left-3.5 top-3.5 z-10 hover:scale-105 transition-transform duration-200">
             <ConditionBadge condition={condition} />
           </div>
-          <div className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-on-surface-variant shadow-sm backdrop-blur">
-            <Heart size={18} />
-          </div>
+          
+          <button
+            type="button"
+            className="absolute right-3.5 top-3.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 dark:border-white/10 bg-white/75 dark:bg-black/45 text-on-surface-variant dark:text-white/80 shadow-sm backdrop-blur-[6px] hover:text-red-500 hover:bg-white dark:hover:bg-black hover:scale-110 active:scale-90 transition-all duration-300 cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+          >
+            <Heart size={16} />
+          </button>
         </div>
 
-        <div className="flex flex-1 flex-col p-5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-1 flex-col p-4">
+          <div className="flex items-center justify-between gap-2">
             {sellerDepartment ? (
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary/90">
+              <span className="truncate text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 dark:text-on-surface-variant/90 max-w-[60%]">
                 {sellerDepartment}
-              </p>
+              </span>
             ) : <span />}
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-verified-bg px-2 py-1 text-[10px] font-black uppercase text-verified animate-pulse">
-              <ShieldCheck size={12} />
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-verified/15 bg-verified/5 dark:bg-verified/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-verified">
+              <ShieldCheck size={11} className="shrink-0" />
               Verified
             </span>
           </div>
 
-          <h3 className="mt-2 line-clamp-2 text-[1.4rem] font-semibold leading-[1.2] text-on-surface transition-colors group-hover:text-primary">
+          <h3 className="mt-2.5 line-clamp-2 text-sm font-semibold leading-tight text-on-surface dark:text-white transition-colors duration-200 group-hover:text-primary dark:group-hover:text-primary-container min-h-[2.5rem]">
             {title}
           </h3>
 
-          <div className="mt-auto flex items-end justify-between border-t border-outline-variant/12 pt-5">
-            <span className="font-display text-[2rem] font-extrabold tracking-tight text-on-surface">
+          <div className="mt-auto flex items-center justify-between border-t border-outline-variant/10 dark:border-border/10 pt-3.5">
+            <span className="font-display text-[1.25rem] font-extrabold tracking-tight text-on-surface dark:text-white">
               ₹{price.toLocaleString("en-IN")}
             </span>
-            <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
-              View Details
-              <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/5 dark:bg-primary/10 text-primary dark:text-primary-container transition-all duration-300 group-hover:bg-primary group-hover:text-white dark:group-hover:bg-primary dark:group-hover:text-black group-hover:scale-105 active:scale-95">
+              <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+            </div>
           </div>
         </div>
       </Link>
     </div>
   )
 }
+

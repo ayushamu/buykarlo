@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Camera, Check, ChevronDown, ImagePlus, Loader2, MapPin, Sparkles, Trash2, TrendingUp } from "lucide-react"
+import { ArrowLeft, Camera, Check, ChevronDown, ImagePlus, Loader2, MapPin, Sparkles, Trash2, TrendingUp, Crop } from "lucide-react"
 import { createListing, getListingForEdit, updateListing } from "@/features/listings/actions"
 import { Input } from "@/components/ui/input"
 import { DRAFT_EVENT_NAME, DRAFT_STORAGE_KEY } from "@/components/ai/BuyKarloSellerBot"
 import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/image"
+import { ImageCropperModal } from "@/components/listing/ImageCropperModal"
 
 const CATEGORIES = [
   { slug: "electronics", name: "Electronics" },
@@ -41,6 +42,14 @@ interface ImageUploadState {
   publicUrl?: string
 }
 
+interface VideoUploadState {
+  file?: File
+  previewUrl: string
+  uploadProgress: number
+  status: "idle" | "uploading" | "success" | "error"
+  publicUrl?: string
+}
+
 function SellPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -53,7 +62,11 @@ function SellPageInner() {
   const [condition, setCondition] = useState("like_new")
   const [campus] = useState("Aligarh Muslim University")
   const [department, setDepartment] = useState("")
+  const [keywords, setKeywords] = useState("")
   const [images, setImages] = useState<ImageUploadState[]>([])
+  const [activeCropIndex, setActiveCropIndex] = useState<number | null>(null)
+  const [isCropOpen, setIsCropOpen] = useState(false)
+  const [video, setVideo] = useState<VideoUploadState | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [loadingListing, setLoadingListing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,6 +108,10 @@ function SellPageInner() {
             setDepartment(l.department)
             setDetailsOpen(true)
           }
+          if (l.keywords) {
+            setKeywords(l.keywords)
+            setDetailsOpen(true)
+          }
           // Populate existing images
           const populatedImages: ImageUploadState[] = l.imageUrls.map((url) => ({
             previewUrl: url,
@@ -103,6 +120,14 @@ function SellPageInner() {
             publicUrl: url,
           }))
           setImages(populatedImages)
+          if (l.videoUrl) {
+            setVideo({
+              previewUrl: l.videoUrl,
+              uploadProgress: 100,
+              status: "success",
+              publicUrl: l.videoUrl,
+            })
+          }
         }
       } catch (err) {
         console.error("Failed to load listing details:", err)
@@ -193,6 +218,75 @@ function SellPageInner() {
     })
   }
 
+  function handleVideoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || e.target.files.length === 0) return
+    const file = e.target.files[0]
+    
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Video exceeds the 15MB limit. Please select a shorter or lower resolution video.")
+      return
+    }
+
+    setError(null)
+    setVideo({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      uploadProgress: 0,
+      status: "idle",
+    })
+  }
+
+  async function uploadVideoToR2(videoState: VideoUploadState): Promise<string> {
+    if (!videoState.file) {
+      throw new Error("No video file provided for upload.")
+    }
+
+    const presignRes = await fetch("/api/storage/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: videoState.file.name,
+        contentType: videoState.file.type,
+      }),
+    })
+
+    if (!presignRes.ok) {
+      throw new Error(`Failed to generate upload URL for ${videoState.file.name}`)
+    }
+
+    const { uploadUrl, publicUrl } = await presignRes.json()
+    setVideo((prev) => (prev ? { ...prev, status: "uploading", uploadProgress: 10 } : null))
+
+    const xhr = new XMLHttpRequest()
+    return new Promise<string>((resolve, reject) => {
+      xhr.open("PUT", uploadUrl, true)
+      xhr.setRequestHeader("Content-Type", videoState.file!.type)
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return
+        const progress = Math.round((event.loaded / event.total) * 100)
+        setVideo((prev) => (prev ? { ...prev, uploadProgress: progress } : null))
+      }
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          setVideo((prev) => (prev ? { ...prev, status: "success", uploadProgress: 100, publicUrl } : null))
+          resolve(publicUrl)
+        } else {
+          setVideo((prev) => (prev ? { ...prev, status: "error" } : null))
+          reject(new Error(`Video upload failed with status ${xhr.status}`))
+        }
+      }
+
+      xhr.onerror = () => {
+        setVideo((prev) => (prev ? { ...prev, status: "error" } : null))
+        reject(new Error("Network error occurred during video upload."))
+      }
+
+      xhr.send(videoState.file)
+    })
+  }
+
   async function uploadToR2(imageState: ImageUploadState, index: number): Promise<string> {
     if (!imageState.file) {
       throw new Error("No file provided for upload.")
@@ -275,6 +369,15 @@ function SellPageInner() {
         }
       }
 
+      let uploadedVideoUrl = ""
+      if (video) {
+        if (video.status === "success" && video.publicUrl) {
+          uploadedVideoUrl = video.publicUrl
+        } else if (video.file) {
+          uploadedVideoUrl = await uploadVideoToR2(video)
+        }
+      }
+
       if (editId) {
         const result = await updateListing({
           id: editId,
@@ -285,7 +388,9 @@ function SellPageInner() {
           condition: condition as "new" | "like_new" | "good" | "fair" | "poor",
           campus,
           department: department || undefined,
+          keywords: keywords || undefined,
           imageUrls: uploadedUrls,
+          videoUrl: uploadedVideoUrl || undefined,
         })
 
         if (result.error) {
@@ -302,7 +407,9 @@ function SellPageInner() {
           condition: condition as "new" | "like_new" | "good" | "fair" | "poor",
           campus,
           department: department || undefined,
+          keywords: keywords || undefined,
           imageUrls: uploadedUrls,
+          videoUrl: uploadedVideoUrl || undefined,
         })
 
         if (result.error) {
@@ -384,13 +491,27 @@ function SellPageInner() {
                       </div>
                     ) : null}
                     {!submitting ? (
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="absolute bottom-3 right-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveCropIndex(index)
+                            setIsCropOpen(true)
+                          }}
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                          title="Crop Image"
+                        >
+                          <Crop size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                          title="Remove Image"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 ))}
@@ -405,6 +526,51 @@ function SellPageInner() {
                     <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
                   </label>
                 ) : null}
+
+                {video ? (
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]">
+                    <video src={video.previewUrl} className="h-full w-full object-cover" />
+                    {video.status === "uploading" ? (
+                      <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white">
+                        Uploading video {video.uploadProgress}%
+                      </div>
+                    ) : null}
+                    {video.status === "success" ? (
+                      <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white">
+                        <Check size={16} />
+                      </div>
+                    ) : null}
+                    {!submitting ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (video.previewUrl.startsWith("blob:")) URL.revokeObjectURL(video.previewUrl)
+                          setVideo(null)
+                        }}
+                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                        title="Remove Video"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    ) : null}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white">
+                        <svg className="h-6 w-6 fill-current text-white ml-0.5" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border-2 border-dashed border-[var(--seller-border)] bg-[var(--seller-surface)] text-center text-secondary transition-colors hover:border-[var(--seller-primary)]">
+                    <ImagePlus size={28} className="text-secondary" />
+                    <div>
+                      <p className="font-semibold text-secondary">Add Video</p>
+                      <p className="text-xs text-[var(--seller-text-soft)]">Max 15MB (.mp4/.mov)</p>
+                    </div>
+                    <input type="file" accept="video/mp4,video/quicktime,video/webm" onChange={handleVideoChange} className="hidden" />
+                  </label>
+                )}
               </div>
 
               <div className="rounded-[1.75rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] p-5">
@@ -569,6 +735,23 @@ function SellPageInner() {
                 </div>
 
                 <div className="space-y-2">
+                  <label htmlFor="keywords" className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                    Search Keywords / Tags (comma separated)
+                  </label>
+                  <Input
+                    id="keywords"
+                    value={keywords}
+                    onChange={(e) => setKeywords(e.target.value)}
+                    disabled={submitting}
+                    placeholder="e.g. laptop, macbook, apple, computer"
+                    className="h-14 rounded-[1.5rem] border-[var(--seller-border)] px-4 focus-visible:border-[var(--seller-primary)]"
+                  />
+                  <p className="text-xs text-[var(--seller-text-soft)]">
+                    Add keywords separated by commas to help students find your listing easily when searching.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <label htmlFor="description" className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Description
                   </label>
@@ -675,6 +858,35 @@ function SellPageInner() {
           </button>
         </div>
       </form>
+
+      {/* Cropper Modal Overlay */}
+      {isCropOpen && activeCropIndex !== null && images[activeCropIndex] && (
+        <ImageCropperModal
+          isOpen={isCropOpen}
+          imageSrc={images[activeCropIndex].previewUrl}
+          fileName={images[activeCropIndex].file?.name}
+          onClose={() => {
+            setIsCropOpen(false)
+            setActiveCropIndex(null)
+          }}
+          onCrop={(croppedFile, croppedPreviewUrl) => {
+            setImages((prev) =>
+              prev.map((img, idx) =>
+                idx === activeCropIndex
+                  ? {
+                      ...img,
+                      file: croppedFile,
+                      previewUrl: croppedPreviewUrl,
+                      status: "idle",
+                      uploadProgress: 0,
+                      publicUrl: undefined,
+                    }
+                  : img
+              )
+            )
+          }}
+        />
+      )}
     </div>
   )
 }

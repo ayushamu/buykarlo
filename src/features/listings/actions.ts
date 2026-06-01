@@ -11,6 +11,8 @@ interface CreateListingInput {
   condition: "new" | "like_new" | "good" | "fair" | "poor"
   campus?: string
   department?: string
+  keywords?: string
+  videoUrl?: string
   imageUrls: string[]
 }
 
@@ -71,7 +73,18 @@ export async function createListing(input: CreateListingInput) {
         condition: input.condition,
         status: "active",
         campus: userCampus,
-        metadata: input.department ? { department: input.department.trim() } : {},
+        metadata: (() => {
+          const meta: Record<string, any> = {}
+          if (input.department) meta.department = input.department.trim()
+          if (input.videoUrl) meta.videoUrl = input.videoUrl.trim()
+          if (input.keywords) {
+            meta.keywords = input.keywords
+              .split(",")
+              .map((k) => k.trim().toLowerCase())
+              .filter(Boolean)
+          }
+          return meta
+        })(),
       })
       .select("id")
       .single()
@@ -345,6 +358,7 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
         id,
         slug,
         title,
+        description,
         price,
         condition,
         campus,
@@ -394,16 +408,22 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
       const sortedImages = l.images ? [...l.images].sort((a: any, b: any) => a.display_order - b.display_order) : []
       const imageUrl = sortedImages.length > 0 ? sortedImages[0].storage_path : null
       const sellerDepartment = (l.profiles as any)?.department || (l.metadata as any)?.department || null
+      const categoryObj = Array.isArray(l.category) ? l.category[0] : (l.category || null)
+      const categorySlug = (categoryObj as any)?.slug || ""
+      const keywords = (l.metadata as any)?.keywords || []
 
       return {
         id: l.id,
         slug: l.slug,
         title: l.title,
+        description: l.description || "",
         price: Number(l.price),
         condition: l.condition,
         imageUrl,
         sellerDepartment,
         campus: l.campus,
+        categorySlug,
+        keywords,
         sellerTrustScore: (l.profiles as any)?.trust_score || 0
       }
     }) || []
@@ -545,7 +565,7 @@ export async function getSellerOrdersData() {
   }
 }
 
-export async function getListingBySlug(slug: string) {
+export async function getListingBySlug(slug: string, incrementView = false) {
   try {
     const supabase = await createClient()
 
@@ -563,6 +583,7 @@ export async function getListingBySlug(slug: string) {
         metadata,
         status,
         view_count,
+        seller_id,
         created_at,
         category:categories(name, slug),
         images:listing_images(storage_path, display_order),
@@ -584,7 +605,8 @@ export async function getListingBySlug(slug: string) {
       return null
     }
 
-    if (!listing) {
+    let matchedListing = listing
+    if (!matchedListing) {
       // 2. Fallback to UUID ID lookup (in case card links to legacy uuid)
       const { data: listingById, error: errorId } = await supabase
         .from("listings")
@@ -599,6 +621,7 @@ export async function getListingBySlug(slug: string) {
           metadata,
           status,
           view_count,
+          seller_id,
           created_at,
           category:categories(name, slug),
           images:listing_images(storage_path, display_order),
@@ -618,10 +641,38 @@ export async function getListingBySlug(slug: string) {
       if (errorId || !listingById) {
         return null
       }
-      return await formatSingleListing(listingById, supabase)
+      matchedListing = listingById
     }
 
-    return await formatSingleListing(listing, supabase)
+    // Increment view count if requested and user is not the seller
+    if (incrementView) {
+      let isSeller = false
+      try {
+        const { data: authData } = await supabase.auth.getUser()
+        const user = authData?.user
+        if (user && user.id === matchedListing.seller_id) {
+          isSeller = true
+        }
+      } catch (authErr) {
+        console.error("Auth check inside getListingBySlug failed:", authErr)
+      }
+
+      if (!isSeller) {
+        const newViewCount = (matchedListing.view_count || 0) + 1
+        const { error: updateError } = await supabase
+          .from("listings")
+          .update({ view_count: newViewCount })
+          .eq("id", matchedListing.id)
+
+        if (updateError) {
+          console.error("Failed to increment listing view count:", updateError)
+        } else {
+          matchedListing.view_count = newViewCount
+        }
+      }
+    }
+
+    return await formatSingleListing(matchedListing, supabase)
   } catch (err) {
     console.error("getListingBySlug exception:", err)
     return null
@@ -660,6 +711,7 @@ async function formatSingleListing(l: any, supabase: any) {
     condition: l.condition,
     campus: l.campus,
     pickupContext: l.metadata?.department || null,
+    videoUrl: l.metadata?.videoUrl || null,
     status: l.status,
     viewCount: l.view_count || 0,
     createdAt: l.created_at,
@@ -777,6 +829,8 @@ export interface UpdateListingInput {
   condition: "new" | "like_new" | "good" | "fair" | "poor"
   campus?: string
   department?: string
+  keywords?: string
+  videoUrl?: string
   imageUrls: string[]
 }
 
@@ -820,6 +874,12 @@ export async function getListingForEdit(id: string) {
     const categoryObj = Array.isArray(listing.category) ? listing.category[0] : (listing.category || null)
     const categorySlug = (categoryObj as any)?.slug || ""
 
+    const keywordsVal = (() => {
+      const kw = (listing.metadata as any)?.keywords
+      if (Array.isArray(kw)) return kw.join(", ")
+      return kw || ""
+    })()
+
     return {
       success: true,
       listing: {
@@ -830,8 +890,10 @@ export async function getListingForEdit(id: string) {
         condition: listing.condition,
         campus: listing.campus,
         department: (listing.metadata as any)?.department || "",
+        keywords: keywordsVal,
         categorySlug,
         imageUrls,
+        videoUrl: (listing.metadata as any)?.videoUrl || "",
       }
     }
   } catch (err) {
@@ -886,7 +948,18 @@ export async function updateListing(input: UpdateListingInput) {
         price: input.price,
         condition: input.condition,
         campus: input.campus || "Aligarh Muslim University",
-        metadata: input.department ? { department: input.department.trim() } : {},
+        metadata: (() => {
+          const meta: Record<string, any> = {}
+          if (input.department) meta.department = input.department.trim()
+          if (input.videoUrl) meta.videoUrl = input.videoUrl.trim()
+          if (input.keywords) {
+            meta.keywords = input.keywords
+              .split(",")
+              .map((k) => k.trim().toLowerCase())
+              .filter(Boolean)
+          }
+          return meta
+        })(),
       })
       .eq("id", input.id)
 

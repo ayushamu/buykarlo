@@ -87,10 +87,10 @@ export default function CartWishlistPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {savedItems.map((item) => (
+          {savedItems.map((item, index) => (
             <div key={item.id} className="relative group flex flex-col h-full">
               <div className="flex-1">
-                <ListingCard {...item} />
+                <ListingCard {...item} priority={index < 4} />
               </div>
               <button
                 onClick={() => handleRemove(item.id)}

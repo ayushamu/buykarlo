@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import {
   Bell,
   ChevronDown,
@@ -58,10 +58,12 @@ function getInitials(name?: string | null) {
 export function AppHeader({ profile }: AppHeaderProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const marketplaceMode = searchParams.get("mode") === "sell" ? "sell" : "buy"
 
   const [selectedCampus, setSelectedCampus] = useState("Aligarh Muslim University (AMU)")
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [searchVal, setSearchVal] = useState(searchParams.get("search") || "")
 
   // Load saved campus on client mount
   useEffect(() => {
@@ -90,6 +92,11 @@ export function AppHeader({ profile }: AppHeaderProps) {
     document.addEventListener("mousedown", handleOutsideClick)
     return () => document.removeEventListener("mousedown", handleOutsideClick)
   }, [dropdownOpen])
+
+  // Sync searchVal with URL search parameter
+  useEffect(() => {
+    setSearchVal(searchParams.get("search") || "")
+  }, [searchParams])
 
   const handleSelectCampus = (campusName: string) => {
     setSelectedCampus(campusName)
@@ -292,6 +299,13 @@ export function AppHeader({ profile }: AppHeaderProps) {
             <input
               type="text"
               placeholder="Search campus deals..."
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  router.push(`/explore?search=${encodeURIComponent(searchVal)}`)
+                }
+              }}
               className="w-full bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60"
             />
             <kbd className="pointer-events-none hidden items-center gap-1 rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] font-medium text-on-surface-variant/80 sm:flex shrink-0">

@@ -5,6 +5,8 @@ import { notFound } from "next/navigation"
 import { ShieldCheck, BookOpen, User, Scale, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+import type { Metadata } from "next"
+
 interface PageProps {
   params: Promise<{ slug: string }>
 }
@@ -15,6 +17,42 @@ export async function generateStaticParams() {
   return POLICIES.map((p) => ({
     slug: p.slug,
   }))
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params
+  const activePolicy = POLICIES.find((p) => p.slug === slug)
+
+  if (!activePolicy) {
+    return {
+      title: "Policy Not Found | BuyKarlo",
+    }
+  }
+
+  const title = `${activePolicy.title} | BuyKarlo AMU Student Guidelines`
+  const description = `Read BuyKarlo's official ${activePolicy.title} for trading, safety, and community guidelines within Aligarh Muslim University (AMU).`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://buykarlo.in/policies/${slug}`,
+      siteName: "BuyKarlo",
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+    alternates: {
+      canonical: `https://buykarlo.in/policies/${slug}`,
+    },
+  }
 }
 
 const POLICIES = [

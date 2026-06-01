@@ -82,6 +82,25 @@ const HERO_STATS = [
   { icon: Users, end: 2, suffix: "K+", label: "Active Sellers", tone: "bg-secondary/10 text-secondary" },
 ]
 
+const FAQ_ITEMS = [
+  {
+    question: "What is reselling and how does it work?",
+    answer: "Reselling (re-selling) is a simple business model where pre-owned, refurbished, or surplus items are sold to secondary buyers. In Hindi, reselling represents simple campus trading—buying textbooks, cycles, or dorm furniture and selling them to other students to recover costs or make a profit. BuyKarlo provides a 100% free, commission-free local marketplace for this process.",
+  },
+  {
+    question: "How can I start a reselling business as an AMU student?",
+    answer: "Starting an online reselling business on campus is easy: collect your unused items (like exam textbooks, semester study notes, cycles, hostel furniture, or dorm electronics), check their condition, click high-quality photos, and list them on BuyKarlo. Because the platform is tailored for verified students, your listing reaches buyers instantly with zero commission or shipping fees.",
+  },
+  {
+    question: "What makes BuyKarlo different from commercial reselling apps like Meesho or Amazon?",
+    answer: "Unlike commercial reselling apps in India (like Meesho or Amazon Reselling) which focus on bulk drop-shipping or retail distribution, BuyKarlo is a hyper-local peer-to-peer student marketplace. You trade directly in person on campus with verified students. There are no shipping delays, no payment holding periods, and no transaction fees.",
+  },
+  {
+    question: "Is listing items for reselling on BuyKarlo free?",
+    answer: "Yes, BuyKarlo is 100% free with zero platform commission. You keep 100% of your sale value. You can coordinate meetups directly in chat, inspect the item in public campus spaces (like libraries, departments, or hostel canteens), and receive payments instantly via UPI or cash.",
+  },
+]
+
 interface HomePageProps {
   searchParams: Promise<{ mode?: string; category?: string; view?: string }>
 }
@@ -104,6 +123,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
   const [visibleNotificationCount, setVisibleNotificationCount] = useState(1)
   const [activityIndex, setActivityIndex] = useState(0)
+  const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null)
+  const [showAllCategories, setShowAllCategories] = useState(false)
 
   useEffect(() => {
     if (category) {
@@ -172,11 +193,23 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      list = list.filter(
-        (listing) =>
-          listing.title.toLowerCase().includes(q) ||
-          (listing.sellerDepartment && listing.sellerDepartment.toLowerCase().includes(q))
-      )
+      list = list.filter((listing) => {
+        const titleMatch = listing.title?.toLowerCase().includes(q) || false
+        const descMatch = listing.description?.toLowerCase().includes(q) || false
+        const catMatch = listing.categorySlug?.toLowerCase().includes(q) || false
+        const deptMatch = listing.sellerDepartment?.toLowerCase().includes(q) || false
+        
+        const keywordsArray = Array.isArray(listing.keywords)
+          ? listing.keywords
+          : typeof listing.keywords === 'string'
+          ? [listing.keywords]
+          : []
+        const keywordMatch = keywordsArray.some((keyword: any) =>
+          typeof keyword === 'string' && keyword.toLowerCase().includes(q)
+        )
+
+        return titleMatch || descMatch || catMatch || deptMatch || keywordMatch
+      })
     }
 
     if (selectedCondition !== "all") {
@@ -214,7 +247,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
       <section>
         <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Categories</p>
         <div className="space-y-2">
-          {CATEGORIES.map((categoryItem) => {
+          {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map((categoryItem) => {
             const Icon = categoryItem.icon
             const isActive = selectedCategory === categoryItem.id
 
@@ -234,6 +267,15 @@ export default function HomePage({ searchParams }: HomePageProps) {
               </button>
             )
           })}
+          {CATEGORIES.length > 4 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-low hover:bg-surface-container px-4 py-2.5 text-xs font-bold text-on-surface-variant transition-colors cursor-pointer mt-1"
+            >
+              <span>{showAllCategories ? "Show Less" : `Show More (+${CATEGORIES.length - 4})`}</span>
+              <ChevronDown size={14} className={cn("transition-transform duration-200 text-outline-variant", showAllCategories && "rotate-180 text-primary")} />
+            </button>
+          )}
         </div>
       </section>
 
@@ -278,8 +320,48 @@ export default function HomePage({ searchParams }: HomePageProps) {
   )
 
   if (showLandingHero) {
+    const websiteJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "BuyKarlo",
+      "url": "https://buykarlo.in",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://buykarlo.in/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    };
+
+    const organizationJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "BuyKarlo",
+      "url": "https://buykarlo.in",
+      "logo": "https://buykarlo.in/brand/buykarlo-mark.png",
+      "areaServed": {
+        "@type": "AdministrativeArea",
+        "name": "Aligarh Muslim University (AMU)"
+      }
+    };
+
+    const faqJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": FAQ_ITEMS.map((faq) => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer
+        }
+      }))
+    };
+
     return (
       <div className="-mx-4 -mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 md:-mx-margin-desktop">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
         <section className="relative isolate overflow-hidden bg-white">
           <div className="absolute inset-y-0 right-0 hidden w-[58%] rounded-bl-[4rem] bg-primary/10 lg:block" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(107,56,212,0.12),transparent_30%),linear-gradient(90deg,#ffffff_0%,rgba(255,255,255,0.94)_43%,rgba(255,255,255,0.62)_70%,rgba(255,255,255,0.42)_100%)]" />
@@ -498,6 +580,67 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 )
               })}
             </StaggerReveal>
+          </div>
+
+          {/* FAQ Section */}
+          <div className="relative mx-auto max-w-container-max px-4 pb-20 md:px-margin-desktop border-t border-outline-variant/10 pt-16 mt-8">
+            <div className="grid gap-10 lg:grid-cols-[1fr_2fr]">
+              {/* Left Panel */}
+              <div className="space-y-4">
+                <span className="inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                  FAQ & Reselling Guide
+                </span>
+                <h2 className="font-display text-4xl font-extrabold tracking-tight text-on-surface">
+                  Frequently Asked Questions
+                </h2>
+                <p className="text-base leading-7 text-on-surface-variant font-medium">
+                  Have questions about reselling on campus? Find answers on how BuyKarlo helps you buy, sell, and trade books, cycles, and electronics commission-free.
+                </p>
+              </div>
+
+              {/* Right Panel (Accordion) */}
+              <div className="space-y-4">
+                {FAQ_ITEMS.map((faq, index) => {
+                  const isExpanded = expandedFaqIndex === index
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        "rounded-[1.5rem] border border-outline-variant/20 bg-white p-5 shadow-sm transition-all duration-200",
+                        isExpanded ? "ring-2 ring-primary/10 border-primary/30" : "hover:bg-slate-50"
+                      )}
+                    >
+                      <button
+                        onClick={() => setExpandedFaqIndex(isExpanded ? null : index)}
+                        className="flex w-full items-center justify-between gap-4 text-left font-bold text-on-surface text-lg cursor-pointer outline-none"
+                      >
+                        <span>{faq.question}</span>
+                        <ChevronDown
+                          size={18}
+                          className={cn("text-outline-variant transition-transform duration-300 shrink-0", isExpanded && "rotate-180 text-primary")}
+                        />
+                      </button>
+                      
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                          >
+                            <p className="mt-4 text-sm leading-6 text-on-surface-variant/90 font-medium animate-in fade-in duration-200">
+                              {faq.answer}
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -766,9 +909,9 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   <div key={index} className="h-[420px] animate-pulse rounded-[2rem] border border-outline-variant/20 bg-white" />
                 ))
               : processedListings.length > 0
-                ? processedListings.map((listing) => (
+                ? processedListings.map((listing, index) => (
                     <div key={listing.id}>
-                      <ListingCard {...listing} />
+                      <ListingCard {...listing} priority={index < 3} />
                     </div>
                   ))
                 : (
