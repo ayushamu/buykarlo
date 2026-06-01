@@ -51,11 +51,10 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
       return { error: "This phone number is already registered to another account." }
     }
 
-    // 4. Upsert profile details (creates the profile if it was missing, or updates it if it exists)
+    // 4. Update profile details (the profile is automatically created via trigger on signup)
     const { error: updateError } = await supabase
       .from("profiles")
-      .upsert({
-        id: user.id,
+      .update({
         email: email,
         full_name: input.fullName.trim(),
         university: input.university.trim(),
@@ -64,6 +63,7 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
         phone_verified: true,
         verification_status: verificationStatus
       })
+      .eq("id", user.id)
 
     if (updateError) {
       console.error("Onboarding Database Update Error:", updateError)

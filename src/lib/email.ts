@@ -1,8 +1,5 @@
 import { Resend } from "resend"
 
-// Initialize Resend with the API key from environment variables
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 // Fallback sender address. Must match your verified domain.
 const SENDER_EMAIL = "noreply@buykarlo.in"
 
@@ -16,6 +13,8 @@ export async function sendWelcomeEmail(toEmail: string, fullName: string) {
       console.warn("RESEND_API_KEY is not defined. Skipping welcome email dispatch.")
       return { success: false, error: "API key missing" }
     }
+
+    const resend = new Resend(process.env.RESEND_API_KEY)
 
     const emailContent = `
       <!DOCTYPE html>
@@ -210,6 +209,8 @@ export async function sendReviewReminderEmail(
       console.warn("RESEND_API_KEY is not defined. Skipping review reminder email dispatch.")
       return { success: false, error: "API key missing" }
     }
+
+    const resend = new Resend(process.env.RESEND_API_KEY)
 
     const reviewLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/review/${dealId}`
 
