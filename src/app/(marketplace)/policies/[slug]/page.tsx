@@ -9,6 +9,14 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
+export const dynamicParams = false
+
+export async function generateStaticParams() {
+  return POLICIES.map((p) => ({
+    slug: p.slug,
+  }))
+}
+
 const POLICIES = [
   { slug: "terms-of-use", title: "Terms of Use", icon: Scale },
   { slug: "privacy-policy", title: "Privacy Policy", icon: BookOpen },
