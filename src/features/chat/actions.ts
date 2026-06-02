@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { sendChatPushNotification } from "@/lib/onesignal"
 
 /**
  * Get a conversation by listingId, creating a new one if it doesn't exist.
@@ -245,7 +246,12 @@ export async function sendMessage(conversationId: string, content: string) {
     // 2. Verify conversation membership
     const { data: conv, error: convError } = await supabase
       .from("conversations")
-      .select("buyer_id, seller_id")
+      .select(`
+        buyer_id, 
+        seller_id,
+        buyer:profiles!conversations_buyer_id_fkey(full_name),
+        seller:profiles!conversations_seller_id_fkey(full_name)
+      `)
       .eq("id", conversationId)
       .maybeSingle()
 
@@ -272,6 +278,22 @@ export async function sendMessage(conversationId: string, content: string) {
       console.error("Error inserting message:", insertError)
       return { error: `Failed to send message: ${insertError.message}` }
     }
+
+    // Trigger push notification asynchronously (don't block the response)
+    const rawBuyer = Array.isArray(conv.buyer) ? conv.buyer[0] : conv.buyer
+    const rawSeller = Array.isArray(conv.seller) ? conv.seller[0] : conv.seller
+    const isBuyer = conv.buyer_id === user.id
+    const senderName = isBuyer ? (rawBuyer?.full_name || "Campus User") : (rawSeller?.full_name || "Campus User")
+    const receiverId = isBuyer ? conv.seller_id : conv.buyer_id
+
+    sendChatPushNotification({
+      receiverId,
+      senderName,
+      messageContent: content.trim(),
+      conversationId
+    }).catch((err) => {
+      console.error("Error dispatching push notification:", err)
+    })
 
     revalidatePath("/messages")
     return { success: true, message: msg }

@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 declare global {
   interface Window {
@@ -18,6 +19,7 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Initialize OneSignal
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async function (OneSignal: any) {
       await OneSignal.init({
@@ -25,6 +27,35 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         allowLocalhostAsSecureOrigin: true, // Allows testing push locally
       });
     });
+
+    // Supabase auth link to OneSignal External ID
+    const supabase = createClient();
+    
+    // Check current active session
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(function (OneSignal: any) {
+          OneSignal.login(user.id);
+        });
+      }
+    });
+
+    // Subscribe to auth state transitions
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(function (OneSignal: any) {
+        if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
+          OneSignal.login(session.user.id);
+        } else if (event === "SIGNED_OUT") {
+          OneSignal.logout();
+        }
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
