@@ -14,9 +14,20 @@ interface ListingCardProps {
   imageUrl?: string
   sellerDepartment?: string
   priority?: boolean
+  isTrustedSeller?: boolean
 }
 
-export function ListingCard({ id, slug, title, price, condition, imageUrl, sellerDepartment, priority = false }: ListingCardProps) {
+export function ListingCard({
+  id,
+  slug,
+  title,
+  price,
+  condition,
+  imageUrl,
+  sellerDepartment,
+  priority = false,
+  isTrustedSeller = false,
+}: ListingCardProps) {
   return (
     <div className="h-full transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.005] active:scale-[0.995]">
       <Link
@@ -63,10 +74,17 @@ export function ListingCard({ id, slug, title, price, condition, imageUrl, selle
                 {sellerDepartment}
               </span>
             ) : <span />}
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-verified/15 bg-verified/5 dark:bg-verified/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-verified">
-              <ShieldCheck size={11} className="shrink-0" />
-              Verified
-            </span>
+            {isTrustedSeller ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-primary to-secondary px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-sm animate-pulse-subtle">
+                <ShieldCheck size={11} className="shrink-0 fill-white" />
+                Trusted
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-verified/15 bg-verified/5 dark:bg-verified/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-verified">
+                <ShieldCheck size={11} className="shrink-0" />
+                Verified
+              </span>
+            )}
           </div>
 
           <h3 className="mt-2.5 line-clamp-2 text-sm font-semibold leading-tight text-on-surface dark:text-white transition-colors duration-200 group-hover:text-primary dark:group-hover:text-primary-container min-h-[2.5rem]">

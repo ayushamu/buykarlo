@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Camera, Check, ChevronDown, ImagePlus, Loader2, MapPin, Sparkles, Trash2, TrendingUp, Crop } from "lucide-react"
+import { ArrowLeft, Camera, Check, ChevronDown, ImagePlus, Loader2, MapPin, Sparkles, Trash2, TrendingUp, Crop, Pin } from "lucide-react"
 import { createListing, getListingForEdit, updateListing } from "@/features/listings/actions"
 import { Input } from "@/components/ui/input"
 import { DRAFT_EVENT_NAME, DRAFT_STORAGE_KEY } from "@/components/ai/BuyKarloSellerBot"
@@ -215,6 +215,14 @@ function SellPageInner() {
       const target = prev[index]
       if (target && target.previewUrl.startsWith("blob:")) URL.revokeObjectURL(target.previewUrl)
       return prev.filter((_, currentIndex) => currentIndex !== index)
+    })
+  }
+
+  function pinImage(index: number) {
+    setImages((prev) => {
+      const nextImages = [...prev]
+      const [target] = nextImages.splice(index, 1)
+      return [target, ...nextImages]
     })
   }
 
@@ -478,7 +486,7 @@ function SellPageInner() {
             <div className="grid gap-4 p-5 md:p-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="grid gap-3 sm:grid-cols-2">
                 {images.map((image, index) => (
-                  <div key={`${image.file?.name || image.previewUrl}-${index}`} className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]">
+                  <div key={image.previewUrl} className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] transition-all duration-300">
                     <img src={image.previewUrl} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
                     {image.status === "uploading" ? (
                       <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white">
@@ -490,8 +498,27 @@ function SellPageInner() {
                         <Check size={16} />
                       </div>
                     ) : null}
+                    
+                    {/* Visual indicator for main cover photo */}
+                    {index === 0 ? (
+                      <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-[var(--seller-primary)] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+                        <Pin size={10} className="rotate-45 fill-white" />
+                        Main Photo
+                      </div>
+                    ) : null}
+
                     {!submitting ? (
                       <div className="absolute bottom-3 right-3 flex gap-2">
+                        {index > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => pinImage(index)}
+                            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                            title="Make Main Photo"
+                          >
+                            <Pin size={16} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Check, X, ZoomIn, ZoomOut, Loader2 } from "lucide-react"
+import { Check, X, ZoomIn, ZoomOut, Loader2, RotateCw } from "lucide-react"
 
 interface ImageCropperModalProps {
   isOpen: boolean
@@ -27,6 +27,7 @@ export function ImageCropperModal({
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 })
   const [fitSize, setFitSize] = useState({ width: 0, height: 0 })
   const [scale, setScale] = useState(1)
+  const [rotation, setRotation] = useState(0)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isProcessing, setIsProcessing] = useState(false)
   const [isImageLoaded, setIsImageLoaded] = useState(false)
@@ -36,6 +37,7 @@ export function ImageCropperModal({
     if (!isOpen) return
     setIsImageLoaded(false)
     setScale(1)
+    setRotation(0)
     setPan({ x: 0, y: 0 })
 
     const updateBoxSize = () => {
@@ -58,17 +60,22 @@ export function ImageCropperModal({
     }
   }, [isOpen, imageSrc])
 
-  // Sync pan limits when scale or dimensions change
+  // Sync pan limits when scale, rotation, or dimensions change
   useEffect(() => {
     if (fitSize.width === 0) return
-    const maxPanX = Math.max(0, (fitSize.width * scale - boxSize.width) / 2)
-    const maxPanY = Math.max(0, (fitSize.height * scale - boxSize.height) / 2)
+
+    const isRotated = rotation === 90 || rotation === 270
+    const w = isRotated ? fitSize.height : fitSize.width
+    const h = isRotated ? fitSize.width : fitSize.height
+
+    const maxPanX = Math.max(0, (w * scale - boxSize.width) / 2)
+    const maxPanY = Math.max(0, (h * scale - boxSize.height) / 2)
 
     setPan((prev) => ({
       x: Math.min(maxPanX, Math.max(-maxPanX, prev.x)),
       y: Math.min(maxPanY, Math.max(-maxPanY, prev.y)),
     }))
-  }, [scale, fitSize, boxSize])
+  }, [scale, rotation, fitSize, boxSize])
 
   if (!isOpen) return null
 
@@ -84,13 +91,13 @@ export function ImageCropperModal({
     let fw = 0
     let fh = 0
 
-    // If image aspect ratio is wider than the crop viewport (4:3)
+    // Contain behavior: fit the entire image inside the 4:3 box by default
     if (nw / nh > bw / bh) {
-      fh = bh
-      fw = nw * (bh / nh)
-    } else {
       fw = bw
       fh = nh * (bw / nw)
+    } else {
+      fh = bh
+      fw = nw * (bh / nh)
     }
 
     setFitSize({ width: fw, height: fh })
@@ -114,8 +121,12 @@ export function ImageCropperModal({
     const newX = panStart.current.x + dx
     const newY = panStart.current.y + dy
 
-    const maxPanX = Math.max(0, (fitSize.width * scale - boxSize.width) / 2)
-    const maxPanY = Math.max(0, (fitSize.height * scale - boxSize.height) / 2)
+    const isRotated = rotation === 90 || rotation === 270
+    const w = isRotated ? fitSize.height : fitSize.width
+    const h = isRotated ? fitSize.width : fitSize.height
+
+    const maxPanX = Math.max(0, (w * scale - boxSize.width) / 2)
+    const maxPanY = Math.max(0, (h * scale - boxSize.height) / 2)
 
     setPan({
       x: Math.min(maxPanX, Math.max(-maxPanX, newX)),
@@ -147,6 +158,10 @@ export function ImageCropperModal({
     img.src = imageSrc
 
     img.onload = () => {
+      // Clear/fill with white background so any empty letterbox/pillarbox margins are clean white
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, 1200, 900)
+
       const renderW = fitSize.width * scale
       const renderH = fitSize.height * scale
 
@@ -156,14 +171,21 @@ export function ImageCropperModal({
       const left = leftCenter + pan.x
       const top = topCenter + pan.y
 
-      const factor = renderW / naturalSize.width
+      const canvasScaleX = 1200 / boxSize.width
+      const canvasScaleY = 900 / boxSize.height
 
-      const sx = -left / factor
-      const sy = -top / factor
-      const sw = boxSize.width / factor
-      const sh = boxSize.height / factor
+      const dx = left * canvasScaleX
+      const dy = top * canvasScaleY
+      const dw = renderW * canvasScaleX
+      const dh = renderH * canvasScaleY
 
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1200, 900)
+      ctx.save()
+      const cx = dx + dw / 2
+      const cy = dy + dh / 2
+      ctx.translate(cx, cy)
+      ctx.rotate((rotation * Math.PI) / 180)
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
+      ctx.restore()
 
       canvas.toBlob(
         (blob) => {
@@ -230,9 +252,10 @@ export function ImageCropperModal({
             style={{
               width: renderW || "auto",
               height: renderH || "auto",
-              transform: `translate3d(${leftCenter + pan.x}px, ${topCenter + pan.y}px, 0)`,
+              transform: `translate3d(${leftCenter + pan.x}px, ${topCenter + pan.y}px, 0) rotate(${rotation}deg)`,
+              transformOrigin: "center center",
             }}
-            className="absolute left-0 top-0 max-w-none origin-top-left pointer-events-none select-none"
+            className="absolute left-0 top-0 max-w-none pointer-events-none select-none"
           />
 
           {/* Grid overlay lines (premium helper guides) */}
@@ -249,13 +272,14 @@ export function ImageCropperModal({
           </div>
         </div>
 
-        {/* Zoom controls */}
+        {/* Zoom & Rotate controls */}
         <div className="mt-5 flex items-center gap-3">
           <button
             type="button"
             onClick={() => setScale((prev) => Math.max(1, prev - 0.2))}
             disabled={!isImageLoaded}
             className="text-on-surface-variant hover:text-primary transition-colors disabled:opacity-40"
+            title="Zoom Out"
           >
             <ZoomOut size={18} />
           </button>
@@ -274,8 +298,22 @@ export function ImageCropperModal({
             onClick={() => setScale((prev) => Math.min(3, prev + 0.2))}
             disabled={!isImageLoaded}
             className="text-on-surface-variant hover:text-primary transition-colors disabled:opacity-40"
+            title="Zoom In"
           >
             <ZoomIn size={18} />
+          </button>
+
+          <div className="h-4 w-[1px] bg-outline-variant/35 mx-1" />
+
+          <button
+            type="button"
+            onClick={() => setRotation((prev) => (prev + 90) % 360)}
+            disabled={!isImageLoaded}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors disabled:opacity-40"
+            title="Rotate 90° Clockwise"
+          >
+            <RotateCw size={16} />
+            <span>Rotate</span>
           </button>
         </div>
 

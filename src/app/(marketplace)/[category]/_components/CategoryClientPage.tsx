@@ -59,6 +59,7 @@ interface Listing {
   categorySlug?: string
   keywords?: string[] | string | null
   sellerTrustScore?: number
+  isTrustedSeller?: boolean
 }
 
 interface Props {

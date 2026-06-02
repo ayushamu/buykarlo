@@ -89,7 +89,7 @@ export async function getSavedListings() {
           condition,
           status,
           images:listing_images(storage_path, display_order),
-          profiles:seller_id(department)
+          profiles:seller_id(department, email)
         )
       `)
       .eq("user_id", user.id)
@@ -116,7 +116,8 @@ export async function getSavedListings() {
           price: Number(l.price),
           condition: l.condition,
           imageUrl,
-          sellerDepartment
+          sellerDepartment,
+          isTrustedSeller: (l.profiles as any)?.email === "buykarlo.official@gmail.com"
         }
       })
 

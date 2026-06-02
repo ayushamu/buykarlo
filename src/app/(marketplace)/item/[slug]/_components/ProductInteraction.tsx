@@ -29,6 +29,84 @@ interface CompareItem {
   imageUrl?: string | null
 }
 
+function renderFormattedDescription(desc: string) {
+  if (!desc) {
+    return <p className="text-on-surface-variant/60 italic text-left">No additional description provided by the seller.</p>
+  }
+
+  // 1. Collapse multiple consecutive newlines (more than 2 newlines into 2 newlines)
+  const normalized = desc.replace(/\n{3,}/g, "\n\n")
+
+  // 2. Split by newlines to process paragraphs and lists
+  const lines = normalized.split("\n")
+
+  // Helper to parse URLs in a line of text and render them as JSX elements
+  const linkify = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const parts = text.split(urlRegex)
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-secondary hover:underline break-all font-semibold"
+          >
+            {part}
+          </a>
+        )
+      }
+      return part
+    })
+  }
+
+  return (
+    <div className="space-y-2 font-body text-[15px] leading-7 text-on-surface-variant md:text-base md:leading-8 break-words [word-break:break-word] [overflow-wrap:break-word]">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim()
+        
+        if (trimmed === "") {
+          return <div key={idx} className="h-1.5" />
+        }
+
+        // Check if the line is a bullet point (starts with *, -, •)
+        const bulletMatch = line.match(/^(\s*)([-*•])\s+(.*)$/)
+        if (bulletMatch) {
+          const content = bulletMatch[3]
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-4">
+              <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span className="flex-1 text-left">{linkify(content)}</span>
+            </div>
+          )
+        }
+
+        // Check if the line is a numbered list (starts with 1., 2., etc.)
+        const numberMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/)
+        if (numberMatch) {
+          const num = numberMatch[2]
+          const content = numberMatch[3]
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-4">
+              <span className="font-mono text-xs font-bold text-primary/70 mt-[2px]">{num}.</span>
+              <span className="flex-1 text-left">{linkify(content)}</span>
+            </div>
+          )
+        }
+
+        // Regular paragraph line
+        return (
+          <p key={idx} className="text-left">
+            {linkify(line)}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
 interface ProductInteractionProps {
   listingId: string
   slug: string
@@ -418,9 +496,9 @@ export function ProductInteraction({
             <div className="mt-5 border-t border-outline-variant/15 pt-5">
               <div className="rounded-[1.5rem] border border-outline-variant/15 bg-surface-container-low/30 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">About this item</p>
-                <p className="mt-3 text-[15px] leading-7 text-on-surface-variant md:text-base md:leading-8 whitespace-pre-wrap">
-                  {description || "No additional description provided by the seller."}
-                </p>
+                <div className="mt-3">
+                  {renderFormattedDescription(description)}
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">

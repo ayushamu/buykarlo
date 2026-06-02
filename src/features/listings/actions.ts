@@ -365,7 +365,7 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
         metadata,
         category:categories(slug),
         images:listing_images(storage_path, display_order),
-        profiles:seller_id(department, trust_score)
+        profiles:seller_id(department, trust_score, email)
       `)
       .eq("status", "active")
 
@@ -424,7 +424,8 @@ export async function getActiveListings(categorySlug?: string, campus?: string) 
         campus: l.campus,
         categorySlug,
         keywords,
-        sellerTrustScore: (l.profiles as any)?.trust_score || 0
+        sellerTrustScore: (l.profiles as any)?.trust_score || 0,
+        isTrustedSeller: (l.profiles as any)?.email === "buykarlo.official@gmail.com"
       }
     }) || []
     console.log(`[getActiveListings] Formatting took ${(performance.now() - formatStart).toFixed(2)}ms`);
@@ -589,6 +590,7 @@ export async function getListingBySlug(slug: string, incrementView = false) {
         images:listing_images(storage_path, display_order),
         seller:profiles!listings_seller_id_fkey(
           id,
+          email,
           full_name,
           avatar_url,
           university,
@@ -627,6 +629,7 @@ export async function getListingBySlug(slug: string, incrementView = false) {
           images:listing_images(storage_path, display_order),
           seller:profiles!listings_seller_id_fkey(
             id,
+            email,
             full_name,
             avatar_url,
             university,
@@ -720,6 +723,7 @@ async function formatSingleListing(l: any, supabase: any) {
     imageUrls,
     seller: l.seller ? {
       id: l.seller.id,
+      email: l.seller.email,
       fullName: l.seller.full_name || "Campus Seller",
       avatarUrl: l.seller.avatar_url,
       university: l.seller.university || "AMU",
