@@ -28,13 +28,15 @@ export function MobileNav() {
   if (isSellerWorkspace) {
     return (
       <>
-        <Link
-          href="/sell"
-          className="fixed bottom-24 right-4 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white shadow-[0_18px_36px_rgba(31,157,119,0.35)] lg:hidden"
-          aria-label="Create listing"
-        >
-          <Plus size={28} />
-        </Link>
+        {pathname !== "/sell" && (
+          <Link
+            href="/sell"
+            className="fixed bottom-24 right-4 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white shadow-[0_18px_36px_rgba(31,157,119,0.35)] lg:hidden"
+            aria-label="Create listing"
+          >
+            <Plus size={28} />
+          </Link>
+        )}
 
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--seller-border)] bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl lg:hidden">
           <div className="grid grid-cols-3 gap-2">

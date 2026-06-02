@@ -359,7 +359,7 @@ function MessagesContent() {
   }
 
   return (
-    <div className="flex w-full max-w-full h-[calc(100vh-140px)] md:h-[calc(100vh-180px)] rounded-3xl overflow-hidden border border-outline-variant/20 bg-surface-container-lowest shadow-sm premium-shadow">
+    <div className="flex h-[calc(100svh-190px)] w-full max-w-full overflow-hidden rounded-3xl border border-outline-variant/20 bg-surface-container-lowest shadow-sm premium-shadow md:h-[calc(100vh-180px)]">
       {/* 1. Sidebar: Chat List */}
       <aside
         className={cn(
@@ -522,19 +522,20 @@ function MessagesContent() {
       </aside>
 
       {/* 2. Main Chat Window */}
-      <section className={cn("flex-1 min-w-0 flex flex-col bg-background relative", !activeConvId && "hidden md:flex")}>
+      <section className={cn("relative flex min-w-0 flex-1 flex-col overflow-hidden bg-background", !activeConvId && "hidden md:flex")}>
         {activeConvId ? (
           <>
             {/* Chat Pane Header */}
-            <header className="h-16 bg-surface border-b border-outline-variant/30 flex justify-between items-center px-stack-lg z-10 shrink-0">
-              <div className="flex items-center gap-stack-md min-w-0">
+            <header className="z-10 flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-outline-variant/30 bg-surface px-3 py-3 md:h-16 md:px-stack-lg md:py-0">
+              <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-stack-md">
                 {/* Back navigation on mobile */}
                 <button
                   onClick={() => {
                     setActiveConvId(null)
                     router.push("/messages", { scroll: false })
                   }}
-                  className="flex md:hidden p-1 mr-1 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                  className="flex shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-low md:hidden"
+                  aria-label="Back to conversations"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -544,33 +545,33 @@ function MessagesContent() {
                     <img
                       src={otherParticipant.avatarUrl}
                       alt={otherParticipant.fullName}
-                      className="w-10 h-10 rounded-full object-cover border border-outline-variant/20"
+                      className="h-11 w-11 rounded-full border border-outline-variant/20 object-cover md:h-10 md:w-10"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-md">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-md font-bold text-primary md:h-10 md:w-10">
                       {otherParticipant?.fullName?.substring(0, 2).toUpperCase() || "CU"}
                     </div>
                   )}
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border border-white rounded-full"></span>
                 </div>
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="font-body text-label-lg font-bold text-on-surface truncate">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="min-w-0 truncate font-body text-base font-extrabold leading-tight text-on-surface md:text-label-lg">
                       {otherParticipant?.fullName}
                     </span>
-                    <span className="text-primary dark:text-primary-fixed-dim">
+                    <span className="shrink-0 text-primary dark:text-primary-fixed-dim" aria-label="Verified student">
                       <CheckCircle size={14} fill="currentColor" className="text-white fill-primary dark:fill-primary-fixed" />
                     </span>
                   </div>
-                  <span className="block font-body text-[11px] text-on-surface-variant truncate">
+                  <span className="mt-0.5 block min-w-0 truncate font-body text-[11px] leading-tight text-on-surface-variant">
                     {otherParticipant?.department || "Student"} • {otherParticipant?.university || "AMU"}
                   </span>
                 </div>
               </div>
 
               {/* Chat Actions */}
-              <div className="flex items-center gap-stack-sm shrink-0">
+              <div className="flex shrink-0 items-center gap-1.5 md:gap-stack-sm">
                 {activeListing?.status !== "sold" && !activeConversation.isBuyer && (
                   <button
                     onClick={() => setMarkSoldOpen(true)}
@@ -584,13 +585,14 @@ function MessagesContent() {
                   <Link
                     href={`/item/${activeListing.slug || activeListing.id}`}
                     target="_blank"
-                    className="flex items-center gap-1 bg-surface-container hover:bg-surface-container-high text-on-surface-variant px-3 py-1.5 rounded-full font-body text-label-sm font-semibold transition-all border border-outline-variant/20"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/20 bg-surface-container text-on-surface-variant transition-all hover:bg-surface-container-high sm:h-auto sm:w-auto sm:gap-1 sm:px-3 sm:py-1.5 sm:font-body sm:text-label-sm sm:font-semibold"
+                    aria-label="View deal"
                   >
-                    <span>View Deal</span>
+                    <span className="hidden sm:inline">View Deal</span>
                     <ExternalLink size={12} />
                   </Link>
                 )}
-                <button className="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container rounded-full cursor-pointer">
+                <button className="material-symbols-outlined rounded-full p-2 text-on-surface-variant hover:bg-surface-container cursor-pointer" aria-label="Chat actions">
                   <MoreVertical size={18} />
                 </button>
               </div>
@@ -608,38 +610,45 @@ function MessagesContent() {
 
             {/* Active Listing Info Pill (Stitch mockup style) */}
             {activeListing && (
-              <div className="bg-surface/50 border-b border-outline-variant/20 px-stack-lg py-2 flex items-center gap-2 shrink-0 justify-between">
-                <div className="flex items-center gap-2 min-w-0">
+              <Link
+                href={`/item/${activeListing.slug || activeListing.id}`}
+                target="_blank"
+                className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-outline-variant/20 bg-surface/50 px-3 py-2.5 transition-colors hover:bg-surface-container-low md:px-stack-lg md:py-2"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
                   {activeListing.imageUrl ? (
                     <img
                       src={activeListing.imageUrl}
                       alt={activeListing.title}
-                      className="w-8 h-8 rounded object-cover border border-outline-variant/30"
+                      className="h-10 w-10 shrink-0 rounded-lg border border-outline-variant/30 object-cover md:h-8 md:w-8 md:rounded"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-outline-variant/20">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant/20 bg-surface-container md:h-8 md:w-8 md:rounded">
                       <ImageIcon size={14} className="text-outline" />
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <p className="font-body text-label-sm font-bold text-on-surface truncate leading-tight">
+                  <div className="min-w-0 flex-1">
+                    <p className="min-w-0 truncate font-body text-sm font-bold leading-tight text-on-surface md:text-label-sm">
                       {activeListing.title}
                     </p>
-                    <p className="font-body text-xs font-semibold text-primary leading-none mt-0.5">
-                      ₹{activeListing.price}
-                    </p>
+                    <div className="mt-1 flex min-w-0 items-center gap-2">
+                      <p className="font-body text-xs font-semibold leading-none text-primary">
+                        ₹{activeListing.price}
+                      </p>
+                      {activeListing.status === "sold" && (
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">
+                          Sold
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {activeListing.status === "sold" && (
-                  <span className="bg-emerald-500/10 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded">
-                    SOLD
-                  </span>
-                )}
-              </div>
+                <ExternalLink size={14} className="shrink-0 text-on-surface-variant/70" />
+              </Link>
             )}
 
             {/* Message Area scroll */}
-            <div className="flex-1 overflow-y-auto p-stack-lg flex flex-col gap-stack-md scrollbar-none bg-slate-50/20 dark:bg-zinc-950/20">
+            <div className="flex flex-1 flex-col gap-stack-md overflow-y-auto bg-slate-50/20 p-3 scrollbar-none dark:bg-zinc-950/20 md:p-stack-lg">
               {loadingMsgs ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -728,7 +737,7 @@ function MessagesContent() {
             </div>
 
             {/* Suggestions & Input Area */}
-            <div className="bg-surface border-t border-outline-variant/20 p-stack-md md:p-stack-lg shrink-0">
+            <div className="shrink-0 border-t border-outline-variant/20 bg-surface p-3 md:p-stack-lg">
               {/* Quick Reply pills suggestion */}
               <div className="flex gap-2 overflow-x-auto pb-stack-sm scrollbar-none select-none">
                 {getQuickReplies().map((reply) => (
@@ -813,8 +822,8 @@ function MessagesContent() {
               )}
 
               {/* Input container row */}
-              <div className="flex items-end gap-stack-md bg-surface-container-low border border-outline-variant/30 rounded-[24px] p-2 pr-4 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                <div className="flex items-center mb-1">
+              <div className="flex min-w-0 items-end gap-2 rounded-[24px] border border-outline-variant/30 bg-surface-container-low p-2 pr-3 transition-all focus-within:ring-2 focus-within:ring-primary/20 md:gap-stack-md md:pr-4">
+                <div className="mb-1 flex shrink-0 items-center">
                   <button
                     onClick={() => setImagePickerOpen(!imagePickerOpen)}
                     title="Attach reference photo"
@@ -851,11 +860,12 @@ function MessagesContent() {
                   }}
                   rows={1}
                   placeholder="Type your message..."
-                  className="flex-1 bg-transparent border-none focus:ring-0 font-body text-sm py-2 px-1 resize-none max-h-32 scrollbar-none outline-none text-on-surface"
+                  className="min-w-0 flex-1 resize-none border-none bg-transparent px-1 py-2 font-body text-sm text-on-surface outline-none scrollbar-none focus:ring-0"
                 />
                 <button
                   onClick={() => handleSend()}
-                  className="mb-1 bg-primary hover:bg-primary-container text-white w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/10 cursor-pointer"
+                  className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/10 transition-all hover:scale-105 hover:bg-primary-container active:scale-95 cursor-pointer"
+                  aria-label="Send message"
                 >
                   <Send size={15} />
                 </button>

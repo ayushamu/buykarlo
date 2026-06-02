@@ -13,7 +13,7 @@ export function AuthLayout({ children, step = 1, stepTitle = "Getting Started" }
   const progressPercent = step * 25
 
   return (
-    <main className="min-h-screen w-full flex bg-surface overflow-hidden relative">
+    <main className="min-h-screen w-full flex bg-surface overflow-y-auto lg:overflow-hidden relative">
       {/* CSS Keyframes injected dynamically */}
       <style jsx global>{`
         @keyframes float-laptop {

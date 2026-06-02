@@ -132,7 +132,10 @@ export function ProfileClient({ profile }: ProfileClientProps) {
       // 2. Upload file directly to R2 bucket
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": compressedFile.type },
+        headers: {
+          "Content-Type": compressedFile.type,
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
         body: compressedFile,
       })
 

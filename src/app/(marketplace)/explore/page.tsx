@@ -372,7 +372,7 @@ function ExploreContent() {
           </div>
 
           {/* Grid of Listings */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {isLoading ? (
               [...Array(8)].map((_, i) => (
                 <div key={i} className="animate-pulse bg-surface-container-low rounded-2xl aspect-[4/3] w-full border border-outline-variant/20 flex flex-col">

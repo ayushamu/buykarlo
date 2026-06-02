@@ -108,7 +108,7 @@ function parseMarkdownToJSX(markdown: string): React.ReactNode {
   const flushList = (keyIndex: number) => {
     if (inList && listItems.length > 0) {
       elements.push(
-        <ul key={`list-${keyIndex}`} className="list-disc pl-6 space-y-2 mb-6 text-on-surface-variant/90 font-medium">
+        <ul key={`list-${keyIndex}`} className="mb-6 list-disc space-y-2 pl-5 text-[0.95rem] font-medium leading-7 text-on-surface-variant/90 md:pl-6 md:text-base">
           {listItems}
         </ul>
       )
@@ -131,7 +131,7 @@ function parseMarkdownToJSX(markdown: string): React.ReactNode {
     if (trimmed.startsWith("# ")) {
       flushList(index)
       elements.push(
-        <h1 key={index} className="font-display text-4xl font-extrabold tracking-tight text-on-surface mt-8 mb-5 first:mt-0">
+        <h1 key={index} className="mb-4 mt-7 font-display text-3xl font-extrabold leading-tight tracking-tight text-on-surface first:mt-0 md:mb-5 md:mt-8 md:text-4xl">
           {parseInlineMarkdown(trimmed.slice(2))}
         </h1>
       )
@@ -140,7 +140,7 @@ function parseMarkdownToJSX(markdown: string): React.ReactNode {
     if (trimmed.startsWith("## ")) {
       flushList(index)
       elements.push(
-        <h2 key={index} className="font-display text-2xl font-extrabold tracking-tight text-on-surface mt-8 mb-4">
+        <h2 key={index} className="mb-3 mt-7 font-display text-2xl font-extrabold leading-tight tracking-tight text-on-surface md:mb-4 md:mt-8">
           {parseInlineMarkdown(trimmed.slice(3))}
         </h2>
       )
@@ -149,7 +149,7 @@ function parseMarkdownToJSX(markdown: string): React.ReactNode {
     if (trimmed.startsWith("### ")) {
       flushList(index)
       elements.push(
-        <h3 key={index} className="font-display text-lg font-bold text-on-surface mt-6 mb-2">
+        <h3 key={index} className="mb-2 mt-6 font-display text-lg font-bold leading-snug text-on-surface">
           {parseInlineMarkdown(trimmed.slice(4))}
         </h3>
       )
@@ -176,7 +176,7 @@ function parseMarkdownToJSX(markdown: string): React.ReactNode {
     // Standard paragraph
     flushList(index)
     elements.push(
-      <p key={index} className="text-base leading-7 text-on-surface-variant/95 font-medium mb-5 last:mb-0">
+      <p key={index} className="mb-5 text-[0.95rem] font-medium leading-7 text-on-surface-variant/95 last:mb-0 md:text-base">
         {parseInlineMarkdown(trimmed)}
       </p>
     )
@@ -184,7 +184,7 @@ function parseMarkdownToJSX(markdown: string): React.ReactNode {
 
   flushList(lines.length)
 
-  return <div className="prose max-w-none dark:prose-invert">{elements}</div>
+  return <div className="max-w-none">{elements}</div>
 }
 
 export default async function PolicyPage({ params }: PageProps) {
@@ -208,25 +208,26 @@ export default async function PolicyPage({ params }: PageProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-4 md:py-8 animate-in fade-in duration-300">
+    <div className="mx-auto max-w-6xl animate-in fade-in px-0 py-4 pb-[calc(7rem+env(safe-area-inset-bottom))] duration-300 md:py-8 md:pb-8">
       {/* Title Header Banner */}
-      <div className="relative isolate overflow-hidden bg-white/60 border border-outline-variant/10 rounded-[2rem] p-6 md:p-8 shadow-sm mb-8">
+      <div className="relative isolate mb-6 overflow-hidden rounded-[1.75rem] border border-outline-variant/10 bg-white/70 p-5 shadow-sm md:mb-8 md:rounded-[2rem] md:p-8">
         <div className="absolute inset-y-0 right-0 w-[40%] rounded-bl-[4rem] bg-primary/5 -z-10 hidden md:block" />
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary mb-3">
+        <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-bold text-primary">
           Campus Policy Center
         </span>
-        <h1 className="font-display text-4xl font-extrabold tracking-tight text-on-surface">
+        <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight text-on-surface md:text-4xl">
           BuyKarlo Trading Guidelines
         </h1>
-        <p className="mt-2 text-sm md:text-base text-on-surface-variant font-medium max-w-2xl leading-relaxed">
+        <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-on-surface-variant md:text-base">
           Read safety parameters, transaction policies, and terms of service that protect Aligarh Muslim University (AMU) students during campus trades.
         </p>
       </div>
 
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         {/* Responsive Sticky Sidebar */}
-        <aside className="w-full shrink-0 md:w-64 lg:w-72 md:sticky md:top-28 z-20">
-          <div className="flex flex-row gap-2 overflow-x-auto pb-4 scrollbar-none md:flex-col md:overflow-x-visible md:pb-0 md:bg-white/60 md:border md:border-outline-variant/10 md:rounded-[2rem] md:p-4 md:shadow-sm">
+        <aside className="relative z-20 w-full shrink-0 md:sticky md:top-28 md:w-64 lg:w-72">
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent md:hidden" />
+          <div className="flex flex-row gap-2 overflow-x-auto pb-3 scrollbar-none md:flex-col md:overflow-x-visible md:rounded-[2rem] md:border md:border-outline-variant/10 md:bg-white/60 md:p-4 md:pb-4 md:shadow-sm">
             <p className="hidden md:block px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-2">
               Available Policies
             </p>
@@ -238,7 +239,7 @@ export default async function PolicyPage({ params }: PageProps) {
                   key={p.slug}
                   href={`/policies/${p.slug}`}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-full text-sm font-bold transition-all whitespace-nowrap cursor-pointer",
+                    "flex shrink-0 items-center gap-2 rounded-full px-4 py-3 text-sm font-bold transition-all whitespace-nowrap cursor-pointer md:gap-3",
                     isActive
                       ? "bg-primary text-white shadow-[0_10px_20px_rgba(28,22,207,0.18)]"
                       : "bg-white border border-outline-variant/10 text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface md:bg-transparent md:border-none"
@@ -253,18 +254,18 @@ export default async function PolicyPage({ params }: PageProps) {
         </aside>
 
         {/* Content Panel */}
-        <article className="flex-1 min-w-0 bg-white/70 border border-outline-variant/10 rounded-[2rem] p-6 md:p-10 shadow-sm relative backdrop-blur-xl">
+        <article className="relative min-w-0 flex-1 rounded-[1.75rem] border border-outline-variant/10 bg-white/80 p-5 shadow-sm backdrop-blur-xl md:rounded-[2rem] md:p-10">
           {contentHtml}
 
           {/* Dynamic Footer Action inside policy */}
-          <div className="mt-12 pt-8 border-t border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-outline-variant/20 pt-6 sm:flex-row sm:items-center md:mt-12 md:pt-8">
             <div>
               <p className="text-sm font-bold text-on-surface">Have any questions about safety or terms?</p>
               <p className="text-xs text-on-surface-variant font-medium mt-0.5">Reach out to BuyKarlo moderating staff for guidance.</p>
             </div>
             <Link
               href="/"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary/10 hover:bg-primary/15 px-5 text-sm font-bold text-primary transition-colors whitespace-nowrap"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary/10 px-5 text-sm font-bold text-primary transition-colors hover:bg-primary/15 sm:w-auto"
             >
               <span>Back to Marketplace</span>
               <ArrowRight size={16} />

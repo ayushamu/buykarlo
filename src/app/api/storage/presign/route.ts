@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       Bucket: process.env.R2_BUCKET_NAME!,
       Key: fileKey,
       ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
     })
 
     // URL expires in 15 minutes (900 seconds)

@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useEffect, useMemo, useState } from "react"
+import { use, useEffect, useMemo, useState, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
@@ -125,6 +125,12 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const [activityIndex, setActivityIndex] = useState(0)
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null)
   const [showAllCategories, setShowAllCategories] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const listingsGridRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedCategory, searchQuery, selectedCondition, selectedPriceRange, sortBy, activeCampus])
 
   useEffect(() => {
     if (category) {
@@ -234,6 +240,48 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
     return list
   }, [listingsList, searchQuery, selectedCondition, selectedPriceRange, sortBy])
+
+  const ITEMS_PER_PAGE = 6
+  const totalPages = Math.ceil(processedListings.length / ITEMS_PER_PAGE)
+
+  const paginatedListings = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    const end = start + ITEMS_PER_PAGE
+    return processedListings.slice(start, end)
+  }, [processedListings, currentPage])
+
+  const getPageNumbers = () => {
+    const pages = []
+    const range = 1
+    
+    pages.push(1)
+    
+    const start = Math.max(2, currentPage - range)
+    const end = Math.min(totalPages - 1, currentPage + range)
+    
+    if (currentPage - range > 2) {
+      pages.push("ellipsis-1")
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+    
+    if (currentPage + range < totalPages - 1) {
+      pages.push("ellipsis-2")
+    }
+    
+    if (totalPages > 1) {
+      pages.push(totalPages)
+    }
+    
+    return pages
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    listingsGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
   const resetFilters = () => {
     setSearchQuery("")
@@ -358,7 +406,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
     };
 
     return (
-      <div className="-mx-4 -mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 md:-mx-margin-desktop">
+      <div className="-mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 md:-mx-margin-desktop">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
@@ -384,26 +432,26 @@ export default function HomePage({ searchParams }: HomePageProps) {
             transition={{ duration: 16, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
           />
 
-          <div className="relative mx-auto grid max-w-container-max gap-10 px-4 pb-6 pt-10 md:px-margin-desktop lg:min-h-[720px] lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:pb-0">
-            <motion.div className="z-10 max-w-3xl" initial="hidden" animate="show" variants={staggerContainer}>
-              <motion.span variants={fadeUpVariants} className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+          <div className="relative mx-auto grid max-w-container-max gap-8 px-4 pb-6 pt-8 md:gap-10 md:px-margin-desktop md:pt-10 lg:min-h-[720px] lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:pb-0">
+            <motion.div className="z-10 max-w-3xl min-w-0" initial="hidden" animate="show" variants={staggerContainer}>
+              <motion.span variants={fadeUpVariants} className="inline-flex max-w-full items-center gap-2 rounded-full bg-primary/10 px-3.5 py-2 text-xs font-bold text-primary sm:text-sm">
                 <ShieldCheck size={18} />
                 Trusted student marketplace for AMU
               </motion.span>
 
-              <motion.h1 variants={fadeUpVariants} className="mt-8 font-display text-5xl font-extrabold leading-[1.08] tracking-tight text-on-surface sm:text-6xl lg:text-7xl">
+              <motion.h1 variants={fadeUpVariants} className="mt-6 max-w-full break-words font-display text-[2.6rem] font-extrabold leading-[1.08] tracking-tight text-on-surface sm:text-6xl md:mt-8 lg:text-7xl">
                 Browse the best <span className="text-primary">campus deals</span> before someone else does.
               </motion.h1>
 
-              <motion.p variants={fadeUpVariants} className="mt-6 max-w-2xl text-lg leading-8 text-on-surface-variant">
+              <motion.p variants={fadeUpVariants} className="mt-5 max-w-2xl text-base leading-7 text-on-surface-variant md:mt-6 md:text-lg md:leading-8">
                 Explore student-listed books, electronics, cycles, and room essentials around Aligarh Muslim University. Save money, chat directly, and close the deal on campus.
               </motion.p>
 
-              <motion.div variants={fadeUpVariants} className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <motion.div variants={fadeUpVariants} className="mt-7 flex flex-col gap-3 sm:flex-row md:mt-8">
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }}>
                   <Link
                     href="/?view=deals&mode=buy"
-                    className="inline-flex h-14 items-center justify-center gap-3 rounded-xl action-gradient px-7 text-base font-bold text-white shadow-[0_18px_34px_rgba(59,61,229,0.28)]"
+                    className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl action-gradient px-7 text-base font-bold text-white shadow-[0_18px_34px_rgba(59,61,229,0.28)] sm:w-auto"
                   >
                     Explore Deals
                     <ArrowRight size={20} />
@@ -412,7 +460,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2, scale: 1.015 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }}>
                   <Link
                     href="/?mode=sell"
-                    className="inline-flex h-14 items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-white px-7 text-base font-bold text-on-surface shadow-sm transition-colors hover:text-primary"
+                    className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-outline-variant/30 bg-white px-7 text-base font-bold text-on-surface shadow-sm transition-colors hover:text-primary sm:w-auto"
                   >
                     <Tag size={20} />
                     Sell Something
@@ -420,7 +468,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 </motion.div>
               </motion.div>
 
-              <motion.div variants={staggerContainer} className="mt-8 grid gap-3 text-sm font-medium text-on-surface-variant sm:grid-cols-3">
+              <motion.div variants={staggerContainer} className="mt-7 grid gap-3 text-sm font-medium text-on-surface-variant sm:grid-cols-3 md:mt-8">
                 {[
                   [ShieldCheck, "Verified students only"],
                   [CheckCircle2, "No markup"],
@@ -699,7 +747,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="mx-auto w-full max-w-container-max animate-in fade-in slide-in-from-bottom-4 px-margin-mobile py-8 pb-12 duration-500 md:px-margin-desktop">
       <Reveal>
         <section className="mb-6 rounded-[2rem] border border-outline-variant/20 bg-white px-5 py-5 shadow-sm md:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -903,54 +951,71 @@ export default function HomePage({ searchParams }: HomePageProps) {
           </div>
           </Reveal>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div ref={listingsGridRef} className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {isLoading
               ? [...Array(6)].map((_, index) => (
                   <div key={index} className="h-[420px] animate-pulse rounded-[2rem] border border-outline-variant/20 bg-white" />
                 ))
-              : processedListings.length > 0
-                ? processedListings.map((listing, index) => (
+              : paginatedListings.length > 0
+                ? paginatedListings.map((listing, index) => (
                     <div key={listing.id}>
                       <ListingCard {...listing} priority={index < 3} />
                     </div>
                   ))
                 : (
-                  <div className="col-span-full rounded-[2rem] border border-outline-variant/15 bg-white px-6 py-16 text-center shadow-sm">
-                    <p className="text-lg font-semibold text-on-surface">No listings match these filters yet.</p>
-                    <p className="mt-2 text-on-surface-variant">Try a broader category, reset filters, or switch campus later.</p>
-                    <button
-                      onClick={resetFilters}
-                      className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(59,61,229,0.2)]"
-                    >
-                      Clear Filters
-                    </button>
-                  </div>
-                )}
+                    <div className="col-span-full rounded-[2rem] border border-outline-variant/15 bg-white px-6 py-16 text-center shadow-sm">
+                      <p className="text-lg font-semibold text-on-surface">No listings match these filters yet.</p>
+                      <p className="mt-2 text-on-surface-variant">Try a broader category, reset filters, or switch campus later.</p>
+                      <button
+                        onClick={resetFilters}
+                        className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(59,61,229,0.2)]"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  )}
           </div>
 
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button className="flex h-12 w-12 items-center justify-center rounded-full border border-outline-variant/20 bg-white text-on-surface-variant shadow-sm">
-              <ArrowLeft size={18} />
-            </button>
-            {[1, 2, 3].map((page) => (
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
               <button
-                key={page}
-                className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold",
-                  page === 1 ? "bg-primary text-white shadow-[0_12px_24px_rgba(59,61,229,0.22)]" : "text-on-surface-variant"
-                )}
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-outline-variant/20 bg-white text-on-surface-variant shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {page}
+                <ArrowLeft size={18} />
               </button>
-            ))}
-            <span className="px-1 text-on-surface-variant">…</span>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold text-on-surface-variant">
-              12
-            </button>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full border border-outline-variant/20 bg-white text-on-surface-variant shadow-sm">
-              <ChevronRight size={18} />
-            </button>
-          </div>
+              {getPageNumbers().map((page, idx) => {
+                if (typeof page === "string") {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-on-surface-variant">
+                      …
+                    </span>
+                  )
+                }
+                const isActive = currentPage === page
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={cn(
+                      "flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold cursor-pointer",
+                      isActive ? "bg-primary text-white shadow-[0_12px_24px_rgba(59,61,229,0.22)]" : "text-on-surface-variant"
+                    )}
+                  >
+                    {page}
+                  </button>
+                )
+              })}
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-outline-variant/20 bg-white text-on-surface-variant shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
 
           <section className="grid gap-6 pt-8 lg:grid-cols-3">
             <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm lg:col-span-2">

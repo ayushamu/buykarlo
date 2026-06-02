@@ -1,0 +1,26 @@
+# BrowserStack Configuration for Playwright
+# Access credentials will be loaded from BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY env variables
+
+# Define target browsers and real devices
+platforms:
+  - deviceName: iPhone 15 Pro
+    osVersion: "17"
+    browserName: safari
+  - deviceName: Google Pixel 8
+    osVersion: "14"
+    browserName: chrome
+  - os: OS X
+    osVersion: Sonoma
+    browserName: playwright-webkit
+    browserVersion: latest
+
+# Enable BrowserStack Local to tunnel to localhost:3000
+browserstackLocal: true
+browserstackLocalOptions:
+  forceLocal: true
+
+# Custom metadata for the Automate dashboard
+playwrightConfigOptions:
+  name: "BuyKarlo 2.0 Mobile UI Parallel Suite"
+  buildName: "BuyKarlo NextJS Build"
+  projectName: "BuyKarlo 2.0"

@@ -17,6 +17,7 @@ import { getOrCreateConversation } from "@/features/chat/actions"
 import { toggleSavedListing } from "@/features/listings/actions"
 import { cn } from "@/lib/utils"
 import type { Condition } from "@/components/shared/ConditionBadge"
+import { AuthModal } from "@/components/auth/AuthModal"
 
 interface CompareItem {
   id: string
@@ -161,6 +162,8 @@ export function ProductInteraction({
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [isSaved, setIsSaved] = useState(isInitiallySaved)
   const [compareItems, setCompareItems] = useState<CompareItem[]>([])
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState<"chat" | "offer" | "save" | null>(null)
 
   // Image zoom-on-hover interaction states
   const [isHovered, setIsHovered] = useState(false)
@@ -242,7 +245,12 @@ export function ProductInteraction({
       try {
         const res = await getOrCreateConversation(listingId)
         if (res.error) {
-          setErrorMsg(res.error)
+          if (res.error.toLowerCase().includes("unauthorized")) {
+            setPendingAction(draft === "offer" ? "offer" : "chat")
+            setIsAuthModalOpen(true)
+          } else {
+            setErrorMsg(res.error)
+          }
         } else if (res.success && res.conversationId) {
           const suffix = draft === "offer" ? "&draft=offer" : ""
           router.push(`/messages?conversationId=${res.conversationId}${suffix}`)
@@ -253,12 +261,28 @@ export function ProductInteraction({
     })
   }
 
+  const handleAuthSuccess = () => {
+    if (pendingAction === "offer") {
+      openConversation("offer")
+    } else if (pendingAction === "save") {
+      handleToggleSave()
+    } else {
+      openConversation()
+    }
+    setPendingAction(null)
+  }
+
   const handleToggleSave = () => {
     setErrorMsg(null)
     startSaveTransition(async () => {
       const res = await toggleSavedListing(listingId)
       if (res.error) {
-        setErrorMsg(res.error)
+        if (res.error.toLowerCase().includes("log in") || res.error.toLowerCase().includes("unauthorized")) {
+          setPendingAction("save")
+          setIsAuthModalOpen(true)
+        } else {
+          setErrorMsg(res.error)
+        }
         return
       }
       if (res.success) {
@@ -311,10 +335,10 @@ export function ProductInteraction({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[1fr_370px] xl:items-start">
-        <div className="space-y-3">
-          <div className="relative overflow-hidden rounded-[2rem] border border-outline-variant/20 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.08)]">
+    <div className="w-full min-w-0 space-y-5 overflow-x-hidden px-4 md:px-0">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_370px] xl:items-start">
+        <div className="min-w-0 space-y-3">
+          <div className="relative min-w-0 overflow-hidden rounded-[1.5rem] border border-outline-variant/20 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.08)] md:rounded-[2rem]">
             <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-on-surface shadow-sm">
               <span className="h-2.5 w-2.5 rounded-full bg-success" />
               Available
@@ -322,7 +346,7 @@ export function ProductInteraction({
 
             {activeMedia ? (
               activeMedia.type === "video" ? (
-                <div className="relative aspect-[4/3] w-full bg-black overflow-hidden">
+                <div className="relative aspect-[4/3] w-full min-w-0 overflow-hidden bg-black">
                   <video
                     src={activeMedia.url}
                     controls
@@ -340,7 +364,7 @@ export function ProductInteraction({
                   onPointerMove={handlePointerMove}
                   onPointerEnter={handlePointerEnter}
                   onPointerLeave={handlePointerLeave}
-                  className="relative aspect-[4/3] w-full bg-surface-container-low overflow-hidden cursor-zoom-in"
+                  className="relative aspect-[4/3] w-full min-w-0 cursor-zoom-in overflow-hidden bg-surface-container-low"
                 >
                   <Image
                     src={activeMedia.url}
@@ -363,7 +387,7 @@ export function ProductInteraction({
           </div>
 
           {mediaItems.length > 1 ? (
-            <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+            <div className="flex w-full min-w-0 gap-2.5 overflow-x-auto overscroll-x-contain pb-2 scrollbar-none">
               {mediaItems.map((item, index) => {
                 const isActive = activeMediaIndex === index
                 return (
@@ -377,7 +401,7 @@ export function ProductInteraction({
                   >
                     {item.type === "video" ? (
                       <div className="relative h-full w-full bg-black">
-                        <video src={item.url} muted className="h-full w-full object-cover opacity-70" />
+                        <video src={item.url} preload="none" muted className="h-full w-full object-cover opacity-70" />
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white">
                             <svg className="h-3 w-3 fill-current text-white ml-0.5" viewBox="0 0 24 24">
@@ -396,13 +420,13 @@ export function ProductInteraction({
           ) : null}
         </div>
 
-        <div className="space-y-4 xl:sticky xl:top-28">
-          <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_24px_48px_rgba(15,23,42,0.08)] md:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <span className="inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+        <div className="min-w-0 space-y-4 xl:sticky xl:top-28">
+          <div className="min-w-0 rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_24px_48px_rgba(15,23,42,0.08)] md:rounded-[2rem] md:p-6">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+              <span className="inline-flex max-w-full rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary md:px-4 md:text-xs md:tracking-[0.18em]">
                 {categoryName}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   onClick={handleShare}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/20 text-on-surface-variant transition-colors hover:bg-surface-container-low"
@@ -426,15 +450,15 @@ export function ProductInteraction({
               </div>
             </div>
 
-            <h1 className="mt-4 font-display text-[2rem] font-extrabold leading-tight text-on-surface md:text-[2.4rem]">
+            <h1 className="mt-4 max-w-full break-words font-display text-[1.8rem] font-extrabold leading-tight text-on-surface md:text-[2.4rem]">
               {title}
             </h1>
 
-            <div className="mt-4 flex flex-wrap items-end gap-3">
-              <span className="font-display text-[2.6rem] font-extrabold tracking-tight text-primary md:text-[3.2rem]">
+            <div className="mt-4 flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
+              <span className="min-w-0 font-display text-[2.35rem] font-extrabold tracking-tight text-primary md:text-[3.2rem]">
                 ₹{price.toLocaleString("en-IN")}
               </span>
-              <span className="text-xl font-semibold text-on-surface-variant/60 line-through md:text-2xl">
+              <span className="text-lg font-semibold text-on-surface-variant/60 line-through md:text-2xl">
                 ₹{originalPrice.toLocaleString("en-IN")}
               </span>
               <span className="text-base font-bold text-success md:text-lg">{savingsPercent}% OFF</span>
@@ -563,6 +587,15 @@ export function ProductInteraction({
           </div>
         </div>
       ) : null}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false)
+          setPendingAction(null)
+        }}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   )
 }

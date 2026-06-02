@@ -1,7 +1,22 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { createServerClient } from "@supabase/ssr"
+import { revalidatePath, unstable_cache, updateTag } from "next/cache"
+
+function createPublicClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase env vars")
+  }
+  return createServerClient(url, anonKey, {
+    cookies: {
+      getAll() { return [] },
+      setAll() {}
+    }
+  })
+}
 
 interface CreateListingInput {
   title: string
@@ -115,6 +130,7 @@ export async function createListing(input: CreateListingInput) {
     // 6. Revalidate homepage and explore cache
     revalidatePath("/")
     revalidatePath("/explore")
+    updateTag("active-listings")
 
     return { success: true, listingId: listing.id }
   } catch (error) {
@@ -287,6 +303,7 @@ export async function updateListingStatus(id: string, status: "active" | "sold" 
     revalidatePath("/")
     revalidatePath("/explore")
     revalidatePath("/dashboard")
+    updateTag("active-listings")
 
     return { success: true }
   } catch (error) {
@@ -335,6 +352,7 @@ export async function deleteListing(id: string) {
     revalidatePath("/")
     revalidatePath("/explore")
     revalidatePath("/dashboard")
+    updateTag("active-listings")
 
     return { success: true }
   } catch (error) {
@@ -343,100 +361,112 @@ export async function deleteListing(id: string) {
   }
 }
 
-export async function getActiveListings(categorySlug?: string, campus?: string) {
-  const startTime = performance.now();
-  console.log(`[getActiveListings] Start: categorySlug=${categorySlug}, campus=${campus}`);
-  try {
-    const clientStart = performance.now();
-    const supabase = await createClient();
-    const clientEnd = performance.now();
-    console.log(`[getActiveListings] Supabase client created in ${(clientEnd - clientStart).toFixed(2)}ms`);
+const fetchActiveListings = unstable_cache(
+  async (categorySlug?: string, campus?: string) => {
+    const startTime = performance.now();
+    console.log(`[getActiveListings - DB Fetch] Start: categorySlug=${categorySlug}, campus=${campus}`);
+    try {
+      const clientStart = performance.now();
+      const supabase = createPublicClient();
+      const clientEnd = performance.now();
+      console.log(`[getActiveListings - DB Fetch] Supabase client created in ${(clientEnd - clientStart).toFixed(2)}ms`);
 
-    let query = supabase
-      .from("listings")
-      .select(`
-        id,
-        slug,
-        title,
-        description,
-        price,
-        condition,
-        campus,
-        metadata,
-        category:categories(slug),
-        images:listing_images(storage_path, display_order),
-        profiles:seller_id(department, trust_score, email)
-      `)
-      .eq("status", "active")
+      let query = supabase
+        .from("listings")
+        .select(`
+          id,
+          slug,
+          title,
+          description,
+          price,
+          condition,
+          campus,
+          metadata,
+          category:categories(slug),
+          images:listing_images(storage_path, display_order),
+          profiles:seller_id(department, trust_score, email)
+        `)
+        .eq("status", "active")
 
-    if (campus && campus !== "all") {
-      query = query.eq("campus", campus)
-    }
-
-    if (categorySlug && categorySlug !== "all") {
-      const catStart = performance.now();
-      // Fetch category ID from slug
-      const { data: categoryData } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("slug", categorySlug)
-        .maybeSingle()
-      console.log(`[getActiveListings] Category lookup for "${categorySlug}" took ${(performance.now() - catStart).toFixed(2)}ms`);
-      
-      if (categoryData) {
-        query = query.eq("category_id", categoryData.id)
-      } else {
-        console.log(`[getActiveListings] Category "${categorySlug}" not found. Total time: ${(performance.now() - startTime).toFixed(2)}ms`);
-        // Category doesn't exist, return empty listings list
-        return { success: true, listings: [] }
+      if (campus && campus !== "all") {
+        query = query.eq("campus", campus)
       }
-    }
 
-    const queryStart = performance.now();
-    const { data: listings, error } = await query.order("created_at", { ascending: false })
-    const queryEnd = performance.now();
-    console.log(`[getActiveListings] DB Query took ${(queryEnd - queryStart).toFixed(2)}ms, returned ${listings?.length || 0} listings`);
-
-    if (error) {
-      console.error("Error fetching active listings:", error)
-      return { error: `Database error: ${error.message}` }
-    }
-
-    // Format listings for feed
-    const formatStart = performance.now();
-    const formatted = listings?.map(l => {
-      const sortedImages = l.images ? [...l.images].sort((a: any, b: any) => a.display_order - b.display_order) : []
-      const imageUrl = sortedImages.length > 0 ? sortedImages[0].storage_path : null
-      const sellerDepartment = (l.profiles as any)?.department || (l.metadata as any)?.department || null
-      const categoryObj = Array.isArray(l.category) ? l.category[0] : (l.category || null)
-      const categorySlug = (categoryObj as any)?.slug || ""
-      const keywords = (l.metadata as any)?.keywords || []
-
-      return {
-        id: l.id,
-        slug: l.slug,
-        title: l.title,
-        description: l.description || "",
-        price: Number(l.price),
-        condition: l.condition,
-        imageUrl,
-        sellerDepartment,
-        campus: l.campus,
-        categorySlug,
-        keywords,
-        sellerTrustScore: (l.profiles as any)?.trust_score || 0,
-        isTrustedSeller: (l.profiles as any)?.email === "buykarlo.official@gmail.com"
+      if (categorySlug && categorySlug !== "all") {
+        const catStart = performance.now();
+        // Fetch category ID from slug
+        const { data: categoryData } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("slug", categorySlug)
+          .maybeSingle()
+        console.log(`[getActiveListings - DB Fetch] Category lookup for "${categorySlug}" took ${(performance.now() - catStart).toFixed(2)}ms`);
+        
+        if (categoryData) {
+          query = query.eq("category_id", categoryData.id)
+        } else {
+          console.log(`[getActiveListings - DB Fetch] Category "${categorySlug}" not found. Total time: ${(performance.now() - startTime).toFixed(2)}ms`);
+          // Category doesn't exist, return empty listings list
+          return { success: true, listings: [] }
+        }
       }
-    }) || []
-    console.log(`[getActiveListings] Formatting took ${(performance.now() - formatStart).toFixed(2)}ms`);
-    console.log(`[getActiveListings] Total execution time: ${(performance.now() - startTime).toFixed(2)}ms`);
 
-    return { success: true, listings: formatted }
-  } catch (error) {
-    console.error("getActiveListings Exception:", error)
-    return { error: "An unexpected error occurred while fetching listings." }
+      const queryStart = performance.now();
+      const { data: listings, error } = await query.order("created_at", { ascending: false })
+      const queryEnd = performance.now();
+      console.log(`[getActiveListings - DB Fetch] DB Query took ${(queryEnd - queryStart).toFixed(2)}ms, returned ${listings?.length || 0} listings`);
+
+      if (error) {
+        console.error("Error fetching active listings:", error)
+        return { error: `Database error: ${error.message}` }
+      }
+
+      // Format listings for feed
+      const formatStart = performance.now();
+      const formatted = listings?.map(l => {
+        const sortedImages = l.images ? [...l.images].sort((a: any, b: any) => a.display_order - b.display_order) : []
+        const imageUrl = sortedImages.length > 0 ? sortedImages[0].storage_path : null
+        const sellerDepartment = (l.profiles as any)?.department || (l.metadata as any)?.department || null
+        const categoryObj = Array.isArray(l.category) ? l.category[0] : (l.category || null)
+        const categorySlug = (categoryObj as any)?.slug || ""
+        const keywords = (l.metadata as any)?.keywords || []
+
+        return {
+          id: l.id,
+          slug: l.slug,
+          title: l.title,
+          description: l.description || "",
+          price: Number(l.price),
+          condition: l.condition,
+          imageUrl,
+          sellerDepartment,
+          campus: l.campus,
+          categorySlug,
+          keywords,
+          sellerTrustScore: (l.profiles as any)?.trust_score || 0,
+          isTrustedSeller: (l.profiles as any)?.email === "buykarlo.official@gmail.com"
+        }
+      }) || []
+      console.log(`[getActiveListings - DB Fetch] Formatting took ${(performance.now() - formatStart).toFixed(2)}ms`);
+      console.log(`[getActiveListings - DB Fetch] Total execution time: ${(performance.now() - startTime).toFixed(2)}ms`);
+
+      return { success: true, listings: formatted }
+    } catch (error) {
+      console.error("getActiveListings Exception:", error)
+      return { error: "An unexpected error occurred while fetching listings." }
+    }
+  },
+  ["active-listings"],
+  {
+    tags: ["active-listings"],
+    revalidate: 60
   }
+)
+
+export async function getActiveListings(categorySlug?: string, campus?: string) {
+  return fetchActiveListings(categorySlug, campus)
 }
+
 
 export async function getSellerOrdersData() {
   try {
@@ -1003,6 +1033,7 @@ export async function updateListing(input: UpdateListingInput) {
     revalidatePath("/explore")
     revalidatePath("/dashboard/listings")
     revalidatePath(`/item/${listing.slug}`)
+    updateTag("active-listings")
 
     return { success: true }
   } catch (error) {

@@ -142,10 +142,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-[1360px] animate-in fade-in bg-[#f5f6ff] px-0 py-2 pb-28 md:px-8 md:py-8 md:pb-12">
+    <div className="mx-auto w-full min-w-0 max-w-[1360px] animate-in overflow-x-hidden bg-[#f5f6ff] px-0 py-2 pb-[calc(7rem+env(safe-area-inset-bottom))] fade-in md:px-8 md:py-8 md:pb-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <nav className="mb-4 flex items-center gap-1.5 px-4 text-xs text-on-surface-variant/80 md:mb-8 md:px-0">
+      <nav className="mb-4 flex min-w-0 items-center gap-1.5 px-4 text-xs text-on-surface-variant/80 md:mb-8 md:px-0">
         <Link href="/" className="transition-colors hover:text-primary">
           Home
         </Link>
@@ -154,7 +154,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           {listing.categoryName}
         </Link>
         <ChevronRight size={12} className="text-outline-variant" />
-        <span className="max-w-[220px] truncate font-semibold text-on-surface">{listing.title}</span>
+        <span className="min-w-0 max-w-[220px] truncate font-semibold text-on-surface">{listing.title}</span>
       </nav>
 
       <ProductInteraction
@@ -173,31 +173,31 @@ export default async function ProductDetailPage({ params }: PageProps) {
         isInitiallySaved={"success" in savedState && savedState.success ? savedState.isSaved : false}
       />
 
-      <div className="mt-5 grid gap-5 px-4 xl:grid-cols-[1fr_370px] md:px-0">
-        <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:p-6">
-          <div className="flex items-center gap-2">
-            <MessageSquare size={18} className="text-secondary" />
-            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-primary">What to check before buying</h2>
+      <div className="mt-5 grid min-w-0 gap-5 px-4 md:px-0 xl:grid-cols-[1fr_370px]">
+        <div className="min-w-0 rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:p-6">
+          <div className="flex min-w-0 items-start gap-2">
+            <MessageSquare size={18} className="mt-0.5 shrink-0 text-secondary" />
+            <h2 className="min-w-0 text-sm font-bold uppercase tracking-[0.14em] text-primary break-words md:tracking-[0.18em]">What to check before buying</h2>
           </div>
           <ul className="mt-5 space-y-3">
             {checklist.map((item) => (
-              <li key={item} className="flex gap-3 text-sm leading-6 text-on-surface-variant">
+              <li key={item} className="flex min-w-0 gap-3 text-sm leading-6 text-on-surface-variant">
                 <CheckCircle2 size={16} className="mt-1 shrink-0 text-secondary" />
-                <span>{item}</span>
+                <span className="min-w-0 break-words">{item}</span>
               </li>
             ))}
           </ul>
         </div>
 
         {listing.seller ? (
-          <section className="rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:p-6">
-            <div className="flex items-center gap-4">
+          <section className="min-w-0 overflow-hidden rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:p-6">
+            <div className="flex min-w-0 items-center gap-4">
               {listing.seller.avatarUrl ? (
-                <div className="relative h-16 w-16 overflow-hidden rounded-full border border-outline-variant/25 shadow-sm">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-outline-variant/25 shadow-sm">
                   <img src={listing.seller.avatarUrl} alt={listing.seller.fullName} className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
                   {listing.seller.fullName.slice(0, 2).toUpperCase()}
                 </div>
               )}
@@ -211,24 +211,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
 
             <div className="mt-5 border-t border-outline-variant/20 pt-5">
-              <div className="flex items-center justify-between text-sm text-on-surface-variant">
-                <span>Trust Score</span>
-                <span className="inline-flex items-center gap-1 font-bold text-on-surface">
+              <div className="flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+                <span className="shrink-0">Trust Score</span>
+                <span className="inline-flex min-w-0 items-center justify-end gap-1 text-right font-bold text-on-surface">
                   <Star size={16} className="fill-[#f4b400] text-[#f4b400]" />
                   {trustRating} <span className="font-medium text-on-surface-variant">({trustScore}/100)</span>
                 </span>
               </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-on-surface-variant">
-                <span>Response Time</span>
-                <span className="font-semibold text-on-surface">Usually quick in chat</span>
+              <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+                <span className="shrink-0">Response Time</span>
+                <span className="min-w-0 text-right font-semibold text-on-surface">Usually quick in chat</span>
               </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-on-surface-variant">
-                <span>Active Listings</span>
-                <span className="font-semibold text-on-surface">{listing.seller.activeListingsCount}</span>
+              <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+                <span className="shrink-0">Active Listings</span>
+                <span className="min-w-0 text-right font-semibold text-on-surface">{listing.seller.activeListingsCount}</span>
               </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-on-surface-variant">
-                <span>Member Since</span>
-                <span className="font-semibold text-on-surface">{sellerJoinedYear}</span>
+              <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+                <span className="shrink-0">Member Since</span>
+                <span className="min-w-0 text-right font-semibold text-on-surface">{sellerJoinedYear}</span>
               </div>
             </div>
 
@@ -257,7 +257,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       </div>
 
       {moreFromCampus.length > 0 && (
-        <section className="mt-14 border-t border-outline-variant/10 px-4 pt-8 md:px-0">
+        <section className="mt-14 min-w-0 border-t border-outline-variant/10 px-4 pt-8 md:px-0">
           <div className="mb-7 flex items-end justify-between gap-4">
             <div>
               <h2 className="font-display text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
@@ -285,6 +285,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       src={related.imageUrl}
                       alt={related.title}
                       fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (

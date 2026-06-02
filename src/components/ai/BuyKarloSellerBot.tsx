@@ -226,6 +226,7 @@ export function BuyKarloSellerBot() {
   
   const isSellerRoute = pathname.startsWith("/dashboard") || pathname === "/sell"
   if (!isSellerRoute) return null
+  const isSellPage = pathname === "/sell"
   
   const [open, setOpen] = useState(false)
   const [descriptionInput, setDescriptionInput] = useState("")
@@ -388,7 +389,12 @@ export function BuyKarloSellerBot() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+    <div
+      className={cn(
+        "fixed bottom-24 z-50 md:bottom-6 md:right-6",
+        isSellPage ? "right-4" : "left-4 md:left-auto"
+      )}
+    >
       <AnimatePresence>
         {open && (
           <motion.div
@@ -396,32 +402,35 @@ export function BuyKarloSellerBot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="mb-4 flex h-[min(720px,calc(100vh-7rem))] w-[calc(100vw-2rem)] max-w-[480px] flex-col overflow-hidden rounded-[2.2rem] border border-emerald-100 bg-white/95 backdrop-blur-2xl shadow-[0_30px_70px_rgba(4,72,58,0.25)]"
+            className={cn(
+              "fixed inset-x-4 top-24 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] flex flex-col overflow-hidden rounded-[2.2rem] border border-emerald-100 bg-white/95 backdrop-blur-2xl shadow-[0_30px_70px_rgba(4,72,58,0.25)]",
+              "md:static md:mb-4 md:h-[min(720px,calc(100vh-7rem))] md:w-[calc(100vw-2rem)] md:max-w-[480px]"
+            )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-emerald-50 bg-emerald-50/50 px-5 py-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+            <div className="flex shrink-0 items-center justify-between border-b border-emerald-50 bg-emerald-50/50 px-4 py-3 md:px-5 md:py-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white">
                   <Sparkles size={20} className="animate-pulse" />
                 </div>
-                <div>
-                  <h3 className="font-display text-base font-extrabold tracking-tight text-slate-800">
+                <div className="min-w-0">
+                  <h3 className="truncate font-display text-sm font-extrabold tracking-tight text-slate-800 md:text-base">
                     Seller Listing Assistant
                   </h3>
-                  <p className="text-[11px] font-semibold text-emerald-700">AI-Powered Listing Generator</p>
+                  <p className="truncate text-[11px] font-semibold text-emerald-700">AI-Powered Listing Generator</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-100 bg-white text-slate-500 hover:text-slate-800 transition-colors shadow-sm"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-white text-slate-500 hover:text-slate-800 transition-colors shadow-sm"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Scrollable container */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-none">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 scrollbar-none md:p-5">
               {error && (
                 <div className="flex items-start gap-2.5 rounded-2xl bg-rose-50 border border-rose-100 p-4 text-xs font-semibold text-rose-700 leading-relaxed">
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
@@ -668,7 +677,7 @@ export function BuyKarloSellerBot() {
             </div>
 
             {/* Bottom Actions Area */}
-            <div className="border-t border-slate-100 bg-white p-5 space-y-2.5">
+            <div className="shrink-0 border-t border-slate-100 bg-white p-4 space-y-2.5 md:p-5">
               {draft ? (
                 <>
                   <div className="grid grid-cols-2 gap-2.5">

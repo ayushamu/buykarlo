@@ -13,7 +13,7 @@ export default function MarketplaceLayout({
       <Suspense fallback={<div className="h-20 w-full border-b border-outline-variant/30 bg-surface" />}>
         <AppHeader />
       </Suspense>
-      <main className="mx-auto flex-1 container px-4 py-8">
+      <main className="w-full min-w-0 flex-1 overflow-x-hidden">
         {children}
       </main>
       <footer className="mt-auto border-t border-outline-variant/20 bg-surface-container-low py-8">

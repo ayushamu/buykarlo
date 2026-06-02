@@ -269,6 +269,7 @@ function SellPageInner() {
     return new Promise<string>((resolve, reject) => {
       xhr.open("PUT", uploadUrl, true)
       xhr.setRequestHeader("Content-Type", videoState.file!.type)
+      xhr.setRequestHeader("Cache-Control", "public, max-age=31536000, immutable")
 
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable) return
@@ -320,6 +321,7 @@ function SellPageInner() {
     return new Promise<string>((resolve, reject) => {
       xhr.open("PUT", uploadUrl, true)
       xhr.setRequestHeader("Content-Type", imageState.file!.type)
+      xhr.setRequestHeader("Cache-Control", "public, max-age=31536000, immutable")
 
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable) return
@@ -600,19 +602,6 @@ function SellPageInner() {
                 )}
               </div>
 
-              <div className="rounded-[1.75rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] p-5">
-                <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-[var(--seller-primary)]">
-                  <Sparkles size={15} />
-                  AI Guidance
-                </p>
-                <p className="mt-4 text-2xl font-bold tracking-tight text-[var(--seller-primary-strong)]">
-                  Detected category: {selectedCategoryLabel}
-                </p>
-                <p className="mt-2 text-sm text-[var(--seller-text-soft)]">Suggested title and pricing cues appear as you fill in the core details below.</p>
-                <div className="mt-5 rounded-[1.5rem] bg-white px-4 py-4 text-sm text-on-surface-variant">
-                  Clear, front-facing product photos usually create more buyer confidence than collage-style uploads.
-                </div>
-              </div>
             </div>
           </div>
 
@@ -649,8 +638,8 @@ function SellPageInner() {
                   onChange={(e) => setTitle(e.target.value)}
                   required
                   disabled={submitting}
-                  placeholder="MacBook Air 13-inch 2019, 8GB RAM"
-                  className="h-16 rounded-[1.5rem] border-[var(--seller-border)] px-5 text-lg font-medium focus-visible:border-[var(--seller-primary)]"
+                  placeholder="Example: MacBook Air 13-inch, 8GB RAM"
+                  className="h-16 rounded-[1.5rem] border-[var(--seller-border)] px-5 text-lg font-medium placeholder:text-on-surface-variant/45 focus-visible:border-[var(--seller-primary)]"
                 />
               </div>
 
@@ -685,8 +674,8 @@ function SellPageInner() {
                     required
                     min="1"
                     disabled={submitting}
-                    placeholder="42000"
-                    className="h-16 rounded-[1.5rem] border-[var(--seller-border)] px-5 text-3xl font-bold focus-visible:border-[var(--seller-primary)]"
+                    placeholder="Example: 42000"
+                    className="h-16 rounded-[1.5rem] border-[var(--seller-border)] px-5 text-3xl font-bold placeholder:text-on-surface-variant/35 focus-visible:border-[var(--seller-primary)]"
                   />
                 </div>
               </div>
@@ -755,8 +744,8 @@ function SellPageInner() {
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
                       disabled={submitting}
-                      placeholder="ZHCET or SS Hall"
-                      className="h-14 rounded-[1.5rem] border-[var(--seller-border)] px-4"
+                      placeholder="Example: ZHCET or SS Hall"
+                      className="h-14 rounded-[1.5rem] border-[var(--seller-border)] px-4 placeholder:text-on-surface-variant/45"
                     />
                   </div>
                 </div>
@@ -770,8 +759,8 @@ function SellPageInner() {
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
                     disabled={submitting}
-                    placeholder="e.g. laptop, macbook, apple, computer"
-                    className="h-14 rounded-[1.5rem] border-[var(--seller-border)] px-4 focus-visible:border-[var(--seller-primary)]"
+                    placeholder="Example: laptop, macbook, apple, computer"
+                    className="h-14 rounded-[1.5rem] border-[var(--seller-border)] px-4 placeholder:text-on-surface-variant/45 focus-visible:border-[var(--seller-primary)]"
                   />
                   <p className="text-xs text-[var(--seller-text-soft)]">
                     Add keywords separated by commas to help students find your listing easily when searching.
@@ -792,8 +781,8 @@ function SellPageInner() {
                     rows={6}
                     required
                     disabled={submitting}
-                    placeholder="Mention age, usage, included accessories, meetup preferences, and anything that helps campus buyers trust the listing."
-                    className="w-full rounded-[1.5rem] border border-[var(--seller-border)] px-4 py-4 text-base outline-none"
+                    placeholder="Add age, usage, included accessories, meetup preference, and any details that help campus buyers trust the listing."
+                    className="w-full rounded-[1.5rem] border border-[var(--seller-border)] px-4 py-4 text-base outline-none placeholder:text-on-surface-variant/45"
                   />
                   {descriptionAiNote ? (
                     <p className="rounded-[1rem] bg-[var(--seller-surface)] px-3 py-2 text-sm font-medium text-[var(--seller-primary-strong)]">
@@ -845,7 +834,7 @@ function SellPageInner() {
           </div>
         </aside>
 
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--seller-border)] bg-white/95 px-4 py-3 backdrop-blur-xl xl:hidden">
+        <div className="w-full xl:hidden mt-6 pb-6">
           <button
             type="submit"
             disabled={submitting}
