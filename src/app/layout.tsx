@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { OneSignalProvider } from "@/components/providers/OneSignalProvider";
 
-const siteUrl = "https://buykarlo.in";
+const siteUrl = "https://www.buykarlo.in";
 
 
 const inter = Inter({
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/illustrations/buykarlo-campus-trust.png",
+        url: "/illustrations/buykarlo-campus-trust.webp",
         width: 1024,
         height: 559,
         alt: "BuyKarlo trusted student marketplace for campus deals",
@@ -89,7 +89,7 @@ export const metadata: Metadata = {
     title: "BuyKarlo | AMU Student Marketplace",
     description:
       "Buy and sell trusted campus deals with verified students at Aligarh Muslim University.",
-    images: ["/illustrations/buykarlo-campus-trust.png"],
+    images: ["/illustrations/buykarlo-campus-trust.webp"],
   },
 };
 

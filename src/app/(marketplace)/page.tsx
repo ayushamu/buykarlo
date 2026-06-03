@@ -293,7 +293,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const FilterSidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={cn("space-y-8", mobile ? "p-5" : "rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm")}>
       <section>
-        <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Categories</p>
+        <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Categories</h3>
         <div className="space-y-2">
           {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map((categoryItem) => {
             const Icon = categoryItem.icon
@@ -328,7 +328,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
       </section>
 
       <section>
-        <p className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Condition</p>
+        <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Condition</h3>
         <div className="space-y-3">
           {CONDITION_OPTIONS.filter((option) => option.id !== "all").map((option) => (
             <label key={option.id} className="flex items-center gap-3 text-base text-on-surface-variant">
@@ -346,7 +346,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
       <section>
         <div className="mb-5 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Price Range</p>
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Price Range</h3>
           <span className="text-sm text-on-surface-variant">₹0 to ₹5000+</span>
         </div>
         <div className="h-2 rounded-full bg-surface-container-low">
@@ -372,10 +372,10 @@ export default function HomePage({ searchParams }: HomePageProps) {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "BuyKarlo",
-      "url": "https://buykarlo.in",
+      "url": "https://www.buykarlo.in",
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "https://buykarlo.in/?search={search_term_string}",
+        "target": "https://www.buykarlo.in/?search={search_term_string}",
         "query-input": "required name=search_term_string"
       }
     };
@@ -384,8 +384,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "BuyKarlo",
-      "url": "https://buykarlo.in",
-      "logo": "https://buykarlo.in/brand/buykarlo-mark.png",
+      "url": "https://www.buykarlo.in",
+      "logo": "https://www.buykarlo.in/brand/buykarlo-mark.png",
       "areaServed": {
         "@type": "AdministrativeArea",
         "name": "Aligarh Muslim University (AMU)"
@@ -440,7 +440,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
               </motion.span>
 
               <motion.h1 variants={fadeUpVariants} className="mt-6 max-w-full break-words font-display text-[2.6rem] font-extrabold leading-[1.08] tracking-tight text-on-surface sm:text-6xl md:mt-8 lg:text-7xl">
-                Browse the best <span className="text-primary">campus deals</span> before someone else does.
+                Browse the best <span className="text-primary">AMU campus deals</span> on BuyKarlo's student marketplace.
               </motion.h1>
 
               <motion.p variants={fadeUpVariants} className="mt-5 max-w-2xl text-base leading-7 text-on-surface-variant md:mt-6 md:text-lg md:leading-8">
@@ -492,7 +492,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
               transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
             >
               <Image
-                src="/illustrations/buykarlo-campus-trust.png"
+                src="/illustrations/buykarlo-campus-trust.webp"
                 alt="AMU students using BuyKarlo for trusted campus exchange"
                 fill
                 priority
@@ -757,7 +757,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 Verified student marketplace
               </span>
               <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
-                Browse the best campus deals before someone else does.
+                Browse the best campus deals on AMU's trusted student marketplace.
               </h1>
               <p className="mt-2 max-w-2xl text-base text-on-surface-variant">
                 Explore student-listed books, electronics, cycles, and room essentials around {activeCampus.split(" (")[0]}. Chat directly, negotiate smartly, and close the deal on campus.

@@ -1,6 +1,6 @@
 const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
-const DEFAULT_COOLDOWN_SECONDS = process.env.NODE_ENV === "development" ? 2 : 8
-const DEFAULT_DAILY_LIMIT = process.env.NODE_ENV === "development" ? 500 : 50
+const DEFAULT_COOLDOWN_SECONDS = process.env.NODE_ENV === "development" ? 15 : 30
+const DEFAULT_DAILY_LIMIT = process.env.NODE_ENV === "development" ? 20 : 15
 
 export type AiUsageFeature =
   | "seller_bot_turn"

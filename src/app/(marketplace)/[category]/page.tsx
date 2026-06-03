@@ -60,7 +60,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      url: `https://buykarlo.in/${category}`,
+      url: `https://www.buykarlo.in/${category}`,
       siteName: "BuyKarlo",
       type: "website",
     },
@@ -70,7 +70,7 @@ export async function generateMetadata({
       description,
     },
     alternates: {
-      canonical: `https://buykarlo.in/${category}`,
+      canonical: `https://www.buykarlo.in/${category}`,
     },
   }
 }
@@ -101,13 +101,13 @@ export default async function CategoryPage({
         "@type": "ListItem",
         position: 1,
         name: "BuyKarlo Marketplace",
-        item: "https://buykarlo.in",
+        item: "https://www.buykarlo.in",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: meta.name,
-        item: `https://buykarlo.in/${category}`,
+        item: `https://www.buykarlo.in/${category}`,
       },
     ],
   }

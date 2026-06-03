@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
 import { createClient } from "@supabase/supabase-js"
 
-const siteUrl = "https://buykarlo.in"
+const siteUrl = "https://www.buykarlo.in"
 
 const staticRoutes = [
   "",

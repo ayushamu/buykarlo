@@ -40,7 +40,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      url: `https://buykarlo.in/policies/${slug}`,
+      url: `https://www.buykarlo.in/policies/${slug}`,
       siteName: "BuyKarlo",
       type: "website",
     },
@@ -50,7 +50,7 @@ export async function generateMetadata({
       description,
     },
     alternates: {
-      canonical: `https://buykarlo.in/policies/${slug}`,
+      canonical: `https://www.buykarlo.in/policies/${slug}`,
     },
   }
 }

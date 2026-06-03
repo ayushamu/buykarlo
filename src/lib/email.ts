@@ -137,7 +137,7 @@ export async function sendWelcomeEmail(toEmail: string, fullName: string) {
       <body>
         <div class="container">
           <div class="header">
-            <img src="https://buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo" />
+            <img src="https://www.buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo" />
             <h1>BuyKarlo 2.0</h1>
             <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px; font-weight: 500;">Your Verified AMU Student Marketplace</p>
           </div>
@@ -309,7 +309,7 @@ export async function sendReviewReminderEmail(
       <body>
         <div class="container">
           <div class="header">
-            <img src="https://buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo" />
+            <img src="https://www.buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo" />
             <h1>BuyKarlo 2.0</h1>
           </div>
           <div class="content">

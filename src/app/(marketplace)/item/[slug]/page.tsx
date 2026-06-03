@@ -124,7 +124,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           ? "https://schema.org/RefurbishedCondition"
           : "https://schema.org/UsedCondition",
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      url: `https://buykarlo.in/item/${listing.slug}`,
+      url: `https://www.buykarlo.in/item/${listing.slug}`,
       seller: listing.seller ? {
         "@type": "Person",
         name: listing.seller.fullName,

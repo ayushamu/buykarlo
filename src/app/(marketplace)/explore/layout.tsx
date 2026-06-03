@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: "Explore Deals & Gear | BuyKarlo AMU",
   description: "Browse the latest student deals at Aligarh Muslim University (AMU). Search second-hand books, laptops, cycles, dorm room decor, and more.",
   alternates: {
-    canonical: "https://buykarlo.in/explore",
+    canonical: "https://www.buykarlo.in/explore",
   },
 }
 

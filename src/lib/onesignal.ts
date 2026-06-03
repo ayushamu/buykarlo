@@ -18,7 +18,7 @@ export async function sendChatPushNotification({
   }
 
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://buykarlo.in";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.buykarlo.in";
 
     const response = await fetch("https://api.onesignal.com/notifications", {
       method: "POST",
