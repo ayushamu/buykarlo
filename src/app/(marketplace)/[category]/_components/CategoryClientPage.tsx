@@ -408,7 +408,7 @@ export default function CategoryClientPage({
           )}
 
           {/* Listings grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
             {isLoading ? (
               [...Array(8)].map((_, i) => (
                 <div
@@ -424,7 +424,7 @@ export default function CategoryClientPage({
               ))
             ) : processedListings.length > 0 ? (
               processedListings.map((listing, index) => (
-                <ListingCard key={listing.id} {...listing} priority={index < 4} />
+                <ListingCard key={listing.id} {...listing} priority={index < 4} compactOnMobile />
               ))
             ) : (
               <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4 bg-surface-container-low/40 rounded-3xl border border-outline-variant/10 px-8">

@@ -1,9 +1,11 @@
 "use client"
 
 import { use, useEffect, useMemo, useState, useRef } from "react"
+import Fuse from "fuse.js"
 import Image from "next/image"
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { SearchSuggestionsDropdown, type SearchSuggestion } from "@/components/marketplace/SearchSuggestionsDropdown"
 import {
   ArrowLeft,
   ArrowRight,
@@ -28,15 +30,17 @@ import {
 } from "lucide-react"
 import { getActiveListings } from "@/features/listings/actions"
 import { ListingCard } from "@/components/listing/ListingCard"
+import { MarketplaceHeroCarousel } from "@/components/marketplace/MarketplaceHeroCarousel"
+import { MobileCategoryStrip } from "@/components/marketplace/MobileCategoryStrip"
 import { CountUpStat, Reveal, StaggerReveal, fadeUpVariants, staggerContainer } from "@/components/motion/PremiumMotion"
 import { cn } from "@/lib/utils"
 
 const CATEGORIES = [
-  { id: "all", name: "All Items", icon: Sparkles },
-  { id: "electronics", name: "Electronics", icon: Laptop },
-  { id: "books", name: "Books", icon: BookOpen },
-  { id: "cycles", name: "Cycles", icon: Bike },
-  { id: "dorm-decor", name: "Dorm Decor", icon: HomeIcon },
+  { id: "all", name: "All Items", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
+  { id: "electronics", name: "Electronics", shortName: "Electronics", icon: Laptop, tone: "sky" as const },
+  { id: "books", name: "Books", shortName: "Books", icon: BookOpen, tone: "amber" as const },
+  { id: "cycles", name: "Cycles", shortName: "Cycles", icon: Bike, tone: "emerald" as const },
+  { id: "dorm-decor", name: "Dorm Decor", shortName: "Dorm Decor", icon: HomeIcon, tone: "rose" as const },
 ]
 
 const CONDITION_OPTIONS = [
@@ -58,6 +62,26 @@ const SORT_OPTIONS = [
   { id: "latest", label: "Latest" },
   { id: "price_asc", label: "Price: Low to High" },
   { id: "price_desc", label: "Price: High to Low" },
+]
+
+// Generic term → category intent mapping for campus-specific vocabulary
+const INTENT_MAP: { patterns: RegExp; categoryId: string }[] = [
+  {
+    patterns: /\b(laptop|computer|pc|notebook|phone|mobile|tablet|charger|earphone|headphone|speaker|camera|calculator|printer|keyboard|mouse|monitor|hard\s?disk|pendrive|wifi|router|projector|gadget|tech|device|electronic|ipad|macbook|lenovo|dell|asus|hp\s?laptop)\b/i,
+    categoryId: "electronics",
+  },
+  {
+    patterns: /\b(book|textbook|notes|syllabus|novel|guide|reference|physics|chemistry|maths|math|calculus|biology|ncert|rd\s?sharma|hc\s?verma|irodov|rs\s?aggarwal|coaching|handout|xerox|photocopy|pdf|study|exam|question\s?bank|previous\s?year|pyq|material)\b/i,
+    categoryId: "books",
+  },
+  {
+    patterns: /\b(cycle|bicycle|bike|gear\s?cycle|mountain\s?bike|hero\s?ranger|atlas|btwin|gear|two\s?wheel|scooter)\b/i,
+    categoryId: "cycles",
+  },
+  {
+    patterns: /\b(dorm|hostel|room|table|chair|lamp|light|mattress|pillow|blanket|curtain|decor|decoration|shelf|rack|fan|cooler|mirror|clock|poster|rug|carpet|bucket|mug|utensil|plate|bowl|kettle|iron\s?box|iron|dryer|organizer|storage|bin|hangers|cloths\s?rack)\b/i,
+    categoryId: "dorm-decor",
+  },
 ]
 
 const HERO_NOTIFICATIONS = [
@@ -127,6 +151,16 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const [showAllCategories, setShowAllCategories] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const listingsGridRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Autocomplete state
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false)
+  const [suggestionActiveIdx, setSuggestionActiveIdx] = useState(-1)
+
+  // Detected intent from query (auto-selects category)
+  const [detectedIntent, setDetectedIntent] = useState<string | null>(null)
+  // Last corrected fuzzy term ("Did you mean")
+  const [fuzzyCorrection, setFuzzyCorrection] = useState<string | null>(null)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -194,28 +228,105 @@ export default function HomePage({ searchParams }: HomePageProps) {
     }
   }, [reduceMotion, showLandingHero])
 
+  // ─── Fuse.js instance (memoised, rebuilt only when listings change) ─────────
+  const fuse = useMemo(
+    () =>
+      new Fuse(listingsList, {
+        keys: [
+          { name: "title", weight: 0.5 },
+          { name: "keywords", weight: 0.25 },
+          { name: "description", weight: 0.15 },
+          { name: "categorySlug", weight: 0.1 },
+        ],
+        threshold: 0.38, // tolerates typos like "labtop" → laptop
+        includeScore: true,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+      }),
+    [listingsList]
+  )
+
+  // ─── Intent detection: maps generic term → category, auto-switches ─────────
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setDetectedIntent(null)
+      return
+    }
+    for (const { patterns, categoryId } of INTENT_MAP) {
+      if (patterns.test(searchQuery)) {
+        setDetectedIntent(categoryId)
+        // Auto-switch the category filter (Option B)
+        setSelectedCategory(categoryId)
+        return
+      }
+    }
+    setDetectedIntent(null)
+  }, [searchQuery])
+
+  // ─── Autocomplete suggestions (up to 5 listing + matching categories) ──────
+  const searchSuggestions = useMemo((): SearchSuggestion[] => {
+    const q = searchQuery.trim()
+    if (q.length < 2 || listingsList.length === 0) return []
+
+    // Fuse search for listing suggestions
+    const fuseResults = fuse.search(q, { limit: 5 })
+    const listingSuggestions: SearchSuggestion[] = fuseResults.map((r) => ({
+      type: "listing" as const,
+      id: r.item.id,
+      slug: r.item.slug,
+      title: r.item.title,
+      price: r.item.price,
+      imageUrl: r.item.imageUrl,
+      categorySlug: r.item.categorySlug,
+      condition: r.item.condition,
+    }))
+
+    // Category shortcuts based on intent
+    const categorySuggestions: SearchSuggestion[] = []
+    for (const { patterns, categoryId } of INTENT_MAP) {
+      if (patterns.test(q)) {
+        const cat = CATEGORIES.find((c) => c.id === categoryId)
+        if (cat) {
+          categorySuggestions.push({
+            type: "category" as const,
+            categoryId: cat.id,
+            categoryLabel: cat.name,
+          })
+        }
+        break
+      }
+    }
+
+    return [...listingSuggestions, ...categorySuggestions]
+  }, [searchQuery, listingsList, fuse])
+
+  // ─── Main filtered + scored listing results ────────────────────────────────
   const processedListings = useMemo(() => {
     let list = [...listingsList]
+    const q = searchQuery.trim()
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter((listing) => {
-        const titleMatch = listing.title?.toLowerCase().includes(q) || false
-        const descMatch = listing.description?.toLowerCase().includes(q) || false
-        const catMatch = listing.categorySlug?.toLowerCase().includes(q) || false
-        const deptMatch = listing.sellerDepartment?.toLowerCase().includes(q) || false
-        
-        const keywordsArray = Array.isArray(listing.keywords)
-          ? listing.keywords
-          : typeof listing.keywords === 'string'
-          ? [listing.keywords]
-          : []
-        const keywordMatch = keywordsArray.some((keyword: any) =>
-          typeof keyword === 'string' && keyword.toLowerCase().includes(q)
-        )
-
-        return titleMatch || descMatch || catMatch || deptMatch || keywordMatch
-      })
+    if (q) {
+      // Use Fuse.js fuzzy search
+      const fuseResults = fuse.search(q)
+      if (fuseResults.length > 0) {
+        // Map to items with relevance score attached
+        list = fuseResults.map((r) => ({ ...r.item, _score: r.score ?? 1 }))
+        setFuzzyCorrection(null)
+      } else {
+        // Nothing matched at all — try a looser search and surface correction
+        const looser = new Fuse(listingsList, {
+          keys: [{ name: "title", weight: 1 }],
+          threshold: 0.6,
+          includeScore: true,
+        })
+        const fallback = looser.search(q, { limit: 3 })
+        if (fallback.length > 0) {
+          setFuzzyCorrection(fallback[0].item.title?.split(" ").slice(0, 2).join(" ") || null)
+        } else {
+          setFuzzyCorrection(null)
+        }
+        list = []
+      }
     }
 
     if (selectedCondition !== "all") {
@@ -232,6 +343,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
       }
     }
 
+    // Sort: when query is active, Fuse already sorted by relevance above;
+    // manual sort overrides only when user explicitly changes the dropdown.
     if (sortBy === "price_asc") {
       list.sort((a, b) => a.price - b.price)
     } else if (sortBy === "price_desc") {
@@ -239,7 +352,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
     }
 
     return list
-  }, [listingsList, searchQuery, selectedCondition, selectedPriceRange, sortBy])
+  }, [listingsList, searchQuery, selectedCondition, selectedPriceRange, sortBy, fuse])
 
   const ITEMS_PER_PAGE = 6
   const totalPages = Math.ceil(processedListings.length / ITEMS_PER_PAGE)
@@ -249,6 +362,12 @@ export default function HomePage({ searchParams }: HomePageProps) {
     const end = start + ITEMS_PER_PAGE
     return processedListings.slice(start, end)
   }, [processedListings, currentPage])
+
+  const hasActiveResultFilter =
+    selectedCategory !== "all" ||
+    searchQuery.trim().length > 0 ||
+    selectedCondition !== "all" ||
+    selectedPriceRange !== "all"
 
   const getPageNumbers = () => {
     const pages = []
@@ -747,95 +866,146 @@ export default function HomePage({ searchParams }: HomePageProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-container-max animate-in fade-in slide-in-from-bottom-4 px-margin-mobile py-8 pb-12 duration-500 md:px-margin-desktop">
+    <div className="mx-auto w-full max-w-container-max overflow-x-hidden animate-in fade-in slide-in-from-bottom-4 px-margin-mobile py-8 pb-12 duration-500 md:px-margin-desktop">
       <Reveal>
-        <section className="mb-6 rounded-[2rem] border border-outline-variant/20 bg-white px-5 py-5 shadow-sm md:px-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-                <ShieldCheck size={16} />
-                Verified student marketplace
-              </span>
-              <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
-                Browse the best campus deals on AMU's trusted student marketplace.
-              </h1>
-              <p className="mt-2 max-w-2xl text-base text-on-surface-variant">
-                Explore student-listed books, electronics, cycles, and room essentials around {activeCampus.split(" (")[0]}. Chat directly, negotiate smartly, and close the deal on campus.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                ["Verified", "Student-only seller identity"],
-                ["No markup", "Better value than retail"],
-                ["Local meetups", "Faster campus handoffs"],
-              ].map(([title, subtitle]) => (
-                <div key={title} className="rounded-[1.5rem] bg-surface-container-low px-4 py-4">
-                  <p className="text-base font-bold text-on-surface">{title}</p>
-                  <p className="mt-1 text-sm text-on-surface-variant">{subtitle}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <MarketplaceHeroCarousel campusName={activeCampus.split(" (")[0]} className="mb-6 hidden md:block" />
       </Reveal>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="sticky top-28">
             <FilterSidebar />
           </div>
         </aside>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Reveal>
-          <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-4 shadow-sm md:p-6">
-            <div className="relative flex items-center rounded-full border border-outline-variant/20 bg-surface-container-low px-5 py-3 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all duration-200">
-              <Search size={20} className="text-on-surface-variant/60 shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search within all listings..."
-                className="w-full bg-transparent px-4 text-base text-on-surface outline-none placeholder:text-on-surface-variant/60"
+          <div className="min-w-0 rounded-[2rem] border border-outline-variant/20 bg-white p-4 shadow-sm md:p-6">
+            {/* Search input with autocomplete dropdown */}
+            <div className="relative">
+              <div className="relative flex min-w-0 items-center rounded-full border border-outline-variant/20 bg-surface-container-low px-5 py-3 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all duration-200">
+                <Search size={20} className="text-on-surface-variant/60 shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  role="combobox"
+                  aria-expanded={isSuggestionsOpen}
+                  aria-autocomplete="list"
+                  aria-controls="search-suggestions-listbox"
+                  aria-activedescendant={suggestionActiveIdx >= 0 ? `suggestion-${suggestionActiveIdx}` : undefined}
+                  value={searchQuery}
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value)
+                    setIsSuggestionsOpen(true)
+                    setSuggestionActiveIdx(-1)
+                  }}
+                  onFocus={() => {
+                    if (searchQuery.trim().length >= 2) setIsSuggestionsOpen(true)
+                  }}
+                  onKeyDown={(e) => {
+                    if (!isSuggestionsOpen || searchSuggestions.length === 0) return
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault()
+                      setSuggestionActiveIdx((i) => Math.min(i + 1, searchSuggestions.length - 1))
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault()
+                      setSuggestionActiveIdx((i) => Math.max(i - 1, -1))
+                    } else if (e.key === "Escape") {
+                      setIsSuggestionsOpen(false)
+                      setSuggestionActiveIdx(-1)
+                    } else if (e.key === "Enter" && suggestionActiveIdx >= 0) {
+                      e.preventDefault()
+                      const s = searchSuggestions[suggestionActiveIdx]
+                      if (s.type === "category" && s.categoryId) {
+                        setSelectedCategory(s.categoryId)
+                        setSearchQuery("")
+                      } else if (s.type === "listing" && s.slug) {
+                        window.location.href = `/item/${s.slug}`
+                      }
+                      setIsSuggestionsOpen(false)
+                    }
+                  }}
+                  placeholder="Search listings, e.g. HC Verma, cycle, laptop..."
+                  className="min-w-0 w-full bg-transparent px-4 text-base text-on-surface outline-none placeholder:text-on-surface-variant/60"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("")
+                      setIsSuggestionsOpen(false)
+                      setSuggestionActiveIdx(-1)
+                      setDetectedIntent(null)
+                      setFuzzyCorrection(null)
+                      searchInputRef.current?.focus()
+                    }}
+                    className="p-1 hover:bg-surface-container rounded-full text-on-surface-variant cursor-pointer shrink-0"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Autocomplete dropdown */}
+              <SearchSuggestionsDropdown
+                id="search-suggestions-listbox"
+                suggestions={searchSuggestions}
+                query={searchQuery}
+                activeIndex={suggestionActiveIdx}
+                isOpen={isSuggestionsOpen && searchSuggestions.length > 0 && searchQuery.trim().length >= 2}
+                onSelectListing={(slug) => {
+                  setIsSuggestionsOpen(false)
+                  window.location.href = `/item/${slug}`
+                }}
+                onSelectCategory={(id) => {
+                  setSelectedCategory(id)
+                  setSearchQuery("")
+                  setIsSuggestionsOpen(false)
+                }}
+                onClose={() => setIsSuggestionsOpen(false)}
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="p-1 hover:bg-surface-container rounded-full text-on-surface-variant cursor-pointer shrink-0"
-                >
-                  <X size={16} />
-                </button>
-              )}
             </div>
 
-            {/* Mobile Horizontal scroll Categories */}
-            <div className="mt-4 flex flex-wrap gap-2 lg:hidden">
-              {CATEGORIES.map((categoryItem) => {
-                const Icon = categoryItem.icon
-                const isActive = selectedCategory === categoryItem.id
-                return (
-                  <button
-                    key={categoryItem.id}
-                    onClick={() => setSelectedCategory(categoryItem.id)}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
-                      isActive ? "bg-primary text-white shadow-sm" : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
-                    )}
-                  >
-                    <Icon size={14} />
-                    {categoryItem.name}
-                  </button>
-                )
-              })}
-            </div>
+            <MobileCategoryStrip
+              categories={CATEGORIES}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              className="mt-4 lg:hidden"
+            />
 
             {/* Unified Search & Filters Control Row */}
-            <div className="mt-5 flex flex-col gap-4 border-t border-outline-variant/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-base font-semibold text-on-surface">
-                  <span className="font-extrabold">{processedListings.length}</span> listings found
-                </p>
-                {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+            <div className={cn(
+              "mt-3 flex flex-col gap-3 border-t border-outline-variant/10 pt-3 sm:flex-row sm:items-center md:mt-5 md:gap-4 md:pt-4",
+              hasActiveResultFilter ? "sm:justify-between" : "sm:justify-end"
+            )}>
+              {hasActiveResultFilter && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Result count */}
+                  <p className="text-base font-semibold text-on-surface">
+                    <span className="font-extrabold">{processedListings.length}</span>
+                    {searchQuery.trim()
+                      ? <span className="text-on-surface-variant font-normal"> results for <span className="font-bold text-on-surface">&ldquo;{searchQuery}&rdquo;</span></span>
+                      : " products available"
+                    }
+                  </p>
+
+                  {/* Intent badge — shown when category was auto-detected */}
+                  {detectedIntent && searchQuery.trim() && (
+                    <>
+                      <div className="hidden h-4 w-px bg-outline-variant/30 sm:block" />
+                      <button
+                        onClick={() => {
+                          setSelectedCategory("all")
+                          setDetectedIntent(null)
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                      >
+                        <span>Searching in: {CATEGORIES.find((c) => c.id === detectedIntent)?.name}</span>
+                        <X size={11} />
+                      </button>
+                    </>
+                  )}
+
+                  {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
                   <>
                     <div className="hidden h-4 w-px bg-outline-variant/30 sm:block" />
                     <button
@@ -845,11 +1015,12 @@ export default function HomePage({ searchParams }: HomePageProps) {
                       Reset Filters
                     </button>
                   </>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Clean Sorting and Filters Actions */}
-              <div className="flex items-center gap-2 sm:self-auto self-end">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:self-auto self-end">
                 {/* Clean HTML Select for Sorting (Responsive & accessible) */}
                 <div className="relative">
                   <select
@@ -951,27 +1122,80 @@ export default function HomePage({ searchParams }: HomePageProps) {
           </div>
           </Reveal>
 
-          <div ref={listingsGridRef} className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div ref={listingsGridRef} className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
             {isLoading
               ? [...Array(6)].map((_, index) => (
                   <div key={index} className="h-[420px] animate-pulse rounded-[2rem] border border-outline-variant/20 bg-white" />
                 ))
               : paginatedListings.length > 0
                 ? paginatedListings.map((listing, index) => (
-                    <div key={listing.id}>
-                      <ListingCard {...listing} priority={index < 3} />
+                    <div key={listing.id} className="min-w-0">
+                      <ListingCard {...listing} priority={index < 3} compactOnMobile />
                     </div>
                   ))
                 : (
                     <div className="col-span-full rounded-[2rem] border border-outline-variant/15 bg-white px-6 py-16 text-center shadow-sm">
-                      <p className="text-lg font-semibold text-on-surface">No listings match these filters yet.</p>
-                      <p className="mt-2 text-on-surface-variant">Try a broader category, reset filters, or switch campus later.</p>
-                      <button
-                        onClick={resetFilters}
-                        className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(59,61,229,0.2)]"
-                      >
-                        Clear Filters
-                      </button>
+                      {searchQuery.trim() ? (
+                        <>
+                          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-low">
+                            <Search size={28} className="text-on-surface-variant/40" />
+                          </div>
+                          <p className="text-lg font-semibold text-on-surface">
+                            No results for &ldquo;{searchQuery}&rdquo;
+                          </p>
+                          {fuzzyCorrection && (
+                            <p className="mt-2 text-sm text-on-surface-variant">
+                              Did you mean{" "}
+                              <button
+                                onClick={() => setSearchQuery(fuzzyCorrection)}
+                                className="font-bold text-primary underline underline-offset-2 hover:text-secondary cursor-pointer"
+                              >
+                                {fuzzyCorrection}
+                              </button>
+                              ?
+                            </p>
+                          )}
+                          <p className="mt-2 text-sm text-on-surface-variant">
+                            Try a different keyword or browse a category:
+                          </p>
+                          <div className="mt-5 flex flex-wrap justify-center gap-2">
+                            {CATEGORIES.filter((c) => c.id !== "all").map((c) => {
+                              const CatIcon = c.icon
+                              return (
+                                <button
+                                  key={c.id}
+                                  onClick={() => {
+                                    setSelectedCategory(c.id)
+                                    setSearchQuery("")
+                                    setFuzzyCorrection(null)
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant/20 bg-white px-4 py-2 text-sm font-semibold text-on-surface-variant hover:border-primary/30 hover:text-primary transition-colors cursor-pointer"
+                                >
+                                  <CatIcon size={14} />
+                                  {c.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <button
+                            onClick={resetFilters}
+                            className="mt-5 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(59,61,229,0.2)]"
+                          >
+                            Clear Search
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-lg font-semibold text-on-surface">No listings match these filters yet.</p>
+                          <p className="mt-2 text-on-surface-variant">Try a broader category, reset filters, or switch campus later.</p>
+                          <button
+                            onClick={resetFilters}
+                            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(59,61,229,0.2)]"
+                          >
+                            Clear Filters
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
           </div>

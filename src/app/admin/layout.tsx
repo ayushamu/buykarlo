@@ -9,6 +9,7 @@ import {
   AlertTriangle, 
   Settings, 
   Shield, 
+  ShieldCheck,
   ArrowLeft,
   Menu,
   X
@@ -19,6 +20,7 @@ const ADMIN_NAV = [
   { name: "Overview", href: "/admin", match: (pathname: string) => pathname === "/admin", icon: LayoutDashboard },
   { name: "Moderation Queue", href: "/admin/listings", match: (pathname: string) => pathname === "/admin/listings", icon: Package },
   { name: "Reports & Safety", href: "/admin/reports", match: (pathname: string) => pathname === "/admin/reports", icon: AlertTriangle },
+  { name: "ID Verifications", href: "/admin/verifications", match: (pathname: string) => pathname === "/admin/verifications", icon: ShieldCheck },
   { name: "System Settings", href: "/admin/settings", match: (pathname: string) => pathname === "/admin/settings", icon: Settings },
 ]
 
@@ -33,9 +35,9 @@ export default function AdminLayout({
   const activeTitle = ADMIN_NAV.find((item) => item.match(pathname))?.name ?? "Admin Control Center"
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row md:h-screen md:overflow-hidden">
       {/* 1. SIDEBAR (Desktop - Persistent) */}
-      <aside className="hidden md:flex w-64 bg-slate-900 text-white shrink-0 flex-col select-none border-r border-slate-800">
+      <aside className="hidden md:flex md:h-screen w-64 bg-slate-900 text-white shrink-0 flex-col select-none border-r border-slate-800">
         {/* Header Branding */}
         <div className="p-6 border-b border-slate-800 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-md">
@@ -140,7 +142,7 @@ export default function AdminLayout({
       )}
 
       {/* 3. MAIN WORKSPACE */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-hidden">
         {/* Workspace Topbar (Breadcrumbs / Title) */}
         <header className="hidden md:flex h-16 bg-white border-b border-outline-variant/30 justify-between items-center px-8 shrink-0 z-10 select-none text-left">
           <div className="flex items-center gap-2">

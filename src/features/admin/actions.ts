@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 
 // Helper function to check if the current user is an admin
 async function checkAdminAccess() {
@@ -187,6 +187,7 @@ export async function resolveReport(reportId: string, action: "dismiss" | "unlis
     revalidatePath("/explore")
     revalidatePath("/admin/listings")
     revalidatePath("/admin/reports")
+    updateTag("active-listings")
 
     return { success: true }
   } catch (error) {
@@ -242,13 +243,49 @@ export async function flagListingByStudent(listingId: string, reason: string) {
       return { error: "Unauthorized. Please log in first." }
     }
 
+    const cleanReason = reason.trim()
+    if (cleanReason.length < 10) {
+      return { error: "Please provide a clearer reason for the report." }
+    }
+
+    const { data: listing, error: listingError } = await supabase
+      .from("listings")
+      .select("id, seller_id, status")
+      .eq("id", listingId)
+      .maybeSingle()
+
+    if (listingError || !listing) {
+      return { error: "Listing not found." }
+    }
+
+    if (listing.seller_id === user.id) {
+      return { error: "You cannot report your own listing." }
+    }
+
+    if (listing.status === "deleted") {
+      return { error: "This listing is no longer available to report." }
+    }
+
+    const { data: existingPendingReport } = await supabase
+      .from("reports")
+      .select("id")
+      .eq("listing_id", listingId)
+      .eq("reporter_id", user.id)
+      .eq("status", "pending")
+      .limit(1)
+      .maybeSingle()
+
+    if (existingPendingReport) {
+      return { error: "You already have a pending report for this listing." }
+    }
+
     // Insert new report record
     const { error } = await supabase
       .from("reports")
       .insert({
         listing_id: listingId,
         reporter_id: user.id,
-        reason: reason.trim(),
+        reason: cleanReason.slice(0, 500),
         status: "pending"
       })
 
@@ -257,6 +294,9 @@ export async function flagListingByStudent(listingId: string, reason: string) {
       return { error: "Failed to flag listing. Please try again." }
     }
 
+    revalidatePath("/admin/reports")
+    revalidatePath("/admin")
+
     return { success: true }
   } catch (error) {
     console.error("flagListingByStudent Exception:", error)
@@ -264,17 +304,50 @@ export async function flagListingByStudent(listingId: string, reason: string) {
   }
 }
 
-export async function getAdminListings() {
+interface AdminListingsQuery {
+  page?: number
+  pageSize?: number
+  searchQuery?: string
+  status?: string
+}
+
+export async function getAdminListings(input: AdminListingsQuery = {}) {
   try {
     const access = await checkAdminAccess()
     if (!access.isAdmin) return { error: access.error }
 
     const supabase = await createClient()
+    const page = Math.max(1, input.page || 1)
+    const pageSize = Math.min(Math.max(input.pageSize || 12, 1), 24)
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const searchQuery = input.searchQuery
+      ?.trim()
+      .replace(/[,%()]/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 80)
+    const status = input.status && input.status !== "all" ? input.status : null
 
-    const { data: listings, error } = await supabase
+    let sellerIds: string[] = []
+    if (searchQuery) {
+      const { data: sellers, error: sellerError } = await supabase
+        .from("profiles")
+        .select("id")
+        .or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
+        .limit(25)
+
+      if (sellerError) {
+        console.error("Error searching admin listing sellers:", sellerError)
+      } else {
+        sellerIds = (sellers || []).map((seller) => seller.id)
+      }
+    }
+
+    let query = supabase
       .from("listings")
       .select(`
         id,
+        seller_id,
         slug,
         title,
         price,
@@ -284,22 +357,51 @@ export async function getAdminListings() {
         created_at,
         category:categories(name),
         seller:profiles!listings_seller_id_fkey(full_name, email)
-      `)
+      `, { count: "exact" })
       .order("created_at", { ascending: false })
+      .range(from, to)
+
+    if (status) {
+      query = query.eq("status", status)
+    }
+
+    if (searchQuery) {
+      const searchParts = [
+        `title.ilike.%${searchQuery}%`,
+        `campus.ilike.%${searchQuery}%`,
+      ]
+
+      if (sellerIds.length > 0) {
+        searchParts.push(`seller_id.in.(${sellerIds.join(",")})`)
+      }
+
+      query = query.or(searchParts.join(","))
+    }
+
+    const { data: listings, error, count } = await query
 
     if (error) {
       console.error("Error fetching admin listings:", error)
       return { error: error.message }
     }
 
-    return { success: true, listings: listings || [] }
+    return {
+      success: true,
+      listings: listings || [],
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)),
+      },
+    }
   } catch (error) {
     console.error("getAdminListings Exception:", error)
     return { error: "Failed to fetch admin listings." }
   }
 }
 
-export async function unlistListingByAdmin(listingId: string) {
+export async function updateListingStatusByAdmin(listingId: string, status: "active" | "hidden") {
   try {
     const access = await checkAdminAccess()
     if (!access.isAdmin) return { error: access.error }
@@ -308,23 +410,28 @@ export async function unlistListingByAdmin(listingId: string) {
 
     const { error } = await supabase
       .from("listings")
-      .update({ status: "hidden" })
+      .update({ status })
       .eq("id", listingId)
 
     if (error) {
-      console.error("Error unlisting listing:", error)
-      return { error: "Failed to unlist the item." }
+      console.error("Error updating listing status by admin:", error)
+      return { error: "Failed to update the item status." }
     }
 
     revalidatePath("/")
     revalidatePath("/explore")
     revalidatePath("/admin/listings")
+    updateTag("active-listings")
 
     return { success: true }
   } catch (error) {
-    console.error("unlistListingByAdmin Exception:", error)
+    console.error("updateListingStatusByAdmin Exception:", error)
     return { error: "An unexpected error occurred." }
   }
+}
+
+export async function unlistListingByAdmin(listingId: string) {
+  return updateListingStatusByAdmin(listingId, "hidden")
 }
 
 export async function setUserAdminStatusByEmail(email: string, isAdmin: boolean) {
@@ -410,7 +517,7 @@ export async function getPendingVerifications() {
         document_url,
         status,
         created_at,
-        user:user_id(id, full_name, email, university, department, trust_score)
+        user:user_id(id, full_name, email, phone, phone_verified, university, department, trust_score)
       `)
       .eq("status", "pending")
       .order("created_at", { ascending: false })
@@ -449,7 +556,7 @@ export async function resolveVerification(
     // 1. Fetch verification details
     const { data: verification, error: fetchVerError } = await supabase
       .from("verifications")
-      .select("user_id")
+      .select("user_id, status")
       .eq("id", verificationId)
       .single()
 
@@ -457,13 +564,17 @@ export async function resolveVerification(
       return { error: "Verification request not found." }
     }
 
+    if (verification.status !== "pending") {
+      return { error: "This verification request has already been resolved." }
+    }
+
     const userId = verification.user_id
     const resolvedStatus = action === "approve" ? "verified" : "rejected"
 
-    // 2. Fetch user's current trust score
+    // 2. Fetch user's current ID status and trust score
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("trust_score")
+      .select("trust_score, verification_status")
       .eq("id", userId)
       .single()
 
@@ -471,9 +582,13 @@ export async function resolveVerification(
       return { error: "User profile not found." }
     }
 
-    // 3. Calculate new trust score if approved (+30 points capped at 100)
+    // 3. Calculate new trust score if this is the first approved ID card.
     const currentScore = profile.trust_score || 50
-    const newScore = action === "approve" ? Math.min(currentScore + 30, 100) : currentScore
+    const alreadyIdVerified = profile.verification_status === "verified"
+    const newScore =
+      action === "approve" && !alreadyIdVerified
+        ? Math.min(currentScore + 30, 100)
+        : currentScore
 
     // 4. Perform updates inside Supabase
     // Update verification record
@@ -515,5 +630,3 @@ export async function resolveVerification(
     return { error: "An unexpected error occurred." }
   }
 }
-
-

@@ -71,12 +71,50 @@ export async function submitIdCardVerification(documentUrl: string) {
       return { error: "Unauthorized. Please log in first." }
     }
 
+    const publicBaseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "")
+    const normalizedDocumentUrl = documentUrl.trim()
+    const expectedDocumentPrefix = publicBaseUrl ? `${publicBaseUrl}/id_cards/${user.id}/` : null
+
+    if (!expectedDocumentPrefix || !normalizedDocumentUrl.startsWith(expectedDocumentPrefix)) {
+      return { error: "Invalid verification document URL." }
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("verification_status")
+      .eq("id", user.id)
+      .single()
+
+    if (profileError || !profile) {
+      return { error: "Profile not found." }
+    }
+
+    if (profile.verification_status === "pending") {
+      return { error: "Your ID verification is already under review." }
+    }
+
+    if (profile.verification_status === "verified") {
+      return { error: "Your student ID is already verified." }
+    }
+
+    const { data: pendingRequest } = await supabase
+      .from("verifications")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .limit(1)
+      .maybeSingle()
+
+    if (pendingRequest) {
+      return { error: "Your ID verification is already under review." }
+    }
+
     // 2. Insert into verifications table
     const { error: insertError } = await supabase
       .from("verifications")
       .insert({
         user_id: user.id,
-        document_url: documentUrl,
+        document_url: normalizedDocumentUrl,
         status: "pending"
       })
 
@@ -105,72 +143,3 @@ export async function submitIdCardVerification(documentUrl: string) {
     return { error: "An unexpected error occurred." }
   }
 }
-
-export async function verifyInstitutionalEmail(emailAddress: string) {
-  try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return { error: "Unauthorized. Please log in first." }
-    }
-
-    // 2. Validate email is institutional
-    const cleanEmail = emailAddress.trim().toLowerCase()
-    const isAcademic = cleanEmail.endsWith(".edu") || cleanEmail.endsWith(".ac.in") || cleanEmail.endsWith(".edu.in")
-    if (!isAcademic) {
-      return { error: "Please enter a valid university institutional email (.edu, .ac.in, or .edu.in)." }
-    }
-
-    // 3. Check if email is already taken by another account
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("institutional_email", cleanEmail)
-      .eq("institutional_verified", true)
-      .maybeSingle()
-
-    if (existing && existing.id !== user.id) {
-      return { error: "This institutional email is already verified by another account." }
-    }
-
-    // 4. Fetch current profiles details to calculate new trust score
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("trust_score, institutional_verified")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile) {
-      return { error: "Profile not found." }
-    }
-
-    // 5. Update profile: mark verified, add +20 points (only if not already verified to prevent double claiming)
-    const currentScore = profile.trust_score || 50
-    const alreadyVerified = profile.institutional_verified
-    const newScore = alreadyVerified ? currentScore : Math.min(currentScore + 20, 100)
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        institutional_email: cleanEmail,
-        institutional_verified: true,
-        trust_score: newScore,
-        verification_status: "verified" // Set to verified upon email verification
-      })
-      .eq("id", user.id)
-
-    if (updateError) {
-      console.error("Error verifying institutional email:", updateError)
-      return { error: "Failed to verify institutional email." }
-    }
-
-    revalidatePath("/profile")
-    return { success: true }
-  } catch (error) {
-    console.error("verifyInstitutionalEmail Exception:", error)
-    return { error: "An unexpected error occurred." }
-  }
-}
-

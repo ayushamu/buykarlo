@@ -20,6 +20,7 @@ import {
 import { BuyKarloMark } from "@/components/brand/BuyKarloMark"
 import { cn } from "@/lib/utils"
 import { CAMPUSES } from "@/lib/constants"
+import { GlobalSearchBar } from "@/components/layouts/GlobalSearchBar"
 
 interface HeaderProfile {
   full_name?: string | null
@@ -63,7 +64,6 @@ export function AppHeader({ profile }: AppHeaderProps) {
 
   const [selectedCampus, setSelectedCampus] = useState("Aligarh Muslim University (AMU)")
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [searchVal, setSearchVal] = useState(searchParams.get("search") || "")
 
   // Load saved campus on client mount
   useEffect(() => {
@@ -93,10 +93,6 @@ export function AppHeader({ profile }: AppHeaderProps) {
     return () => document.removeEventListener("mousedown", handleOutsideClick)
   }, [dropdownOpen])
 
-  // Sync searchVal with URL search parameter
-  useEffect(() => {
-    setSearchVal(searchParams.get("search") || "")
-  }, [searchParams])
 
   const handleSelectCampus = (campusName: string) => {
     setSelectedCampus(campusName)
@@ -111,6 +107,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
   const isSellerWorkspace =
     pathname.startsWith("/dashboard") || pathname.startsWith("/sell") || (pathname === "/" && marketplaceMode === "sell")
   const isProductDetail = pathname.startsWith("/item/")
+  const isMessagesPage = pathname === "/messages"
 
   const sellerTitle =
     pathname === "/sell"
@@ -222,11 +219,28 @@ export function AppHeader({ profile }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-outline-variant/30 bg-surface/95 backdrop-blur-xl shadow-sm">
-      <div className="mx-auto flex max-w-container-max items-center justify-between gap-4 px-margin-mobile pt-3 pb-3 sm:py-4 md:px-margin-desktop md:py-5">
+      <div
+        className={cn(
+          "mx-auto flex max-w-container-max items-center justify-between gap-4 px-margin-mobile sm:py-4 md:px-margin-desktop md:py-5",
+          isMessagesPage ? "py-2.5" : "pt-3 pb-3"
+        )}
+      >
         <div className="flex items-center gap-3 md:gap-6 lg:gap-10">
           <Link href="/" className="group flex items-center gap-2.5">
-            <BuyKarloMark className="h-9 w-9 md:h-10 md:w-10 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" />
-            <span className="font-display text-2xl font-extrabold tracking-tighter text-primary md:text-3xl transition-colors duration-200 group-hover:text-secondary">BuyKarlo</span>
+            <BuyKarloMark
+              className={cn(
+                "shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 md:h-10 md:w-10",
+                isMessagesPage ? "h-8 w-8" : "h-9 w-9"
+              )}
+            />
+            <span
+              className={cn(
+                "font-display font-extrabold tracking-tighter text-primary transition-colors duration-200 group-hover:text-secondary md:text-3xl",
+                isMessagesPage ? "text-xl" : "text-2xl"
+              )}
+            >
+              BuyKarlo
+            </span>
           </Link>
 
           <div className="relative hidden sm:block campus-selector-container">
@@ -294,24 +308,8 @@ export function AppHeader({ profile }: AppHeaderProps) {
             </Link>
           </div>
 
-          <label className="hidden min-w-[260px] items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-container-low px-4 py-2.5 lg:flex focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 focus-within:min-w-[320px] transition-all duration-300 shadow-sm">
-            <Search size={16} className="text-outline transition-colors duration-200 focus-within:text-primary" />
-            <input
-              type="text"
-              placeholder="Search campus deals..."
-              value={searchVal}
-              onChange={(e) => setSearchVal(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  router.push(`/explore?search=${encodeURIComponent(searchVal)}`)
-                }
-              }}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-on-surface-variant/60"
-            />
-            <kbd className="pointer-events-none hidden items-center gap-1 rounded border border-outline-variant/30 bg-surface-container-high px-1.5 py-0.5 font-mono text-[10px] font-medium text-on-surface-variant/80 sm:flex shrink-0">
-              ⌘K
-            </kbd>
-          </label>
+          <GlobalSearchBar className="hidden lg:block" />
+
 
           <Link
             href="/messages"
@@ -392,7 +390,12 @@ export function AppHeader({ profile }: AppHeaderProps) {
       </div>
 
       {!isProductDetail ? (
-        <div className="mx-auto flex max-w-container-max items-center justify-between gap-3 px-margin-mobile pb-3 lg:hidden md:px-margin-desktop">
+        <div
+          className={cn(
+            "mx-auto flex max-w-container-max items-center justify-between gap-3 px-margin-mobile pb-3 lg:hidden md:px-margin-desktop",
+            isMessagesPage && "hidden md:flex"
+          )}
+        >
           <div className="flex items-center rounded-full border border-outline-variant/30 bg-surface-container p-1 shadow-inner">
             <Link
               href="/"

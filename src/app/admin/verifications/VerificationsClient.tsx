@@ -8,6 +8,7 @@ import {
   AlertCircle, 
   User, 
   Mail, 
+  Phone,
   School, 
   BookOpen, 
   Award,
@@ -27,6 +28,8 @@ interface VerificationItem {
     id: string
     full_name: string | null
     email: string | null
+    phone: string | null
+    phone_verified: boolean | null
     university: string | null
     department: string | null
     trust_score: number | null
@@ -36,6 +39,13 @@ interface VerificationItem {
 interface VerificationsClientProps {
   initialVerifications: VerificationItem[]
 }
+
+const submittedDateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+})
 
 export function VerificationsClient({ initialVerifications }: VerificationsClientProps) {
   const router = useRouter()
@@ -98,6 +108,8 @@ export function VerificationsClient({ initialVerifications }: VerificationsClien
               id: "",
               full_name: "Unknown User",
               email: "unknown@student",
+              phone: null,
+              phone_verified: false,
               university: "AMU",
               department: "Physics",
               trust_score: 50
@@ -116,7 +128,9 @@ export function VerificationsClient({ initialVerifications }: VerificationsClien
                     </div>
                     <div>
                       <h4 className="font-display font-extrabold text-slate-800 text-sm">{user.full_name || "Campus Student"}</h4>
-                      <span className="text-[10px] text-on-surface-variant font-medium">Submitted {new Date(item.created_at).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-on-surface-variant font-medium">
+                        Submitted {submittedDateFormatter.format(new Date(item.created_at))}
+                      </span>
                     </div>
                   </div>
 
@@ -124,6 +138,19 @@ export function VerificationsClient({ initialVerifications }: VerificationsClien
                     <div className="flex items-center gap-2">
                       <Mail size={14} className="text-primary shrink-0" />
                       <span className="truncate">{user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone size={14} className="text-primary shrink-0" />
+                      <span className="truncate">{user.phone || "No phone on profile"}</span>
+                      {user.phone_verified ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+                          Unverified
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <School size={14} className="text-primary shrink-0" />

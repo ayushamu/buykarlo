@@ -32,10 +32,8 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
       }
     }
 
-    // 2. Determine verification status based on email domain
+    // 2. Keep student verification tied to admin-reviewed ID cards only.
     const email = user.email || ""
-    const isAcademic = email.endsWith(".edu") || email.endsWith(".ac.in") || email.endsWith(".edu.in")
-    const verificationStatus = isAcademic ? "verified" : "unverified"
 
     // 3. Check if the phone number is already taken by another user
     const cleanedPhone = input.phone.replace(/\D/g, "")
@@ -61,7 +59,10 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
         department: input.department.trim(),
         phone: displayPhone,
         phone_verified: true,
-        verification_status: verificationStatus
+        verification_status: "unverified",
+        institutional_email: null,
+        institutional_verified: false,
+        trust_score: 50
       })
       .eq("id", user.id)
 

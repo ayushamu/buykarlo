@@ -26,9 +26,7 @@ export default async function ProfilePage() {
       phone,
       trust_score,
       phone_verified,
-      verification_status,
-      institutional_email,
-      institutional_verified
+      verification_status
     `)
     .eq("id", user.id)
     .maybeSingle()

@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Heart, ShieldCheck } from "lucide-react"
 import { ConditionBadge, type Condition } from "@/components/shared/ConditionBadge"
+import { cn } from "@/lib/utils"
 
 interface ListingCardProps {
   id: string
@@ -15,6 +16,7 @@ interface ListingCardProps {
   sellerDepartment?: string
   priority?: boolean
   isTrustedSeller?: boolean
+  compactOnMobile?: boolean
 }
 
 export function ListingCard({
@@ -27,12 +29,75 @@ export function ListingCard({
   sellerDepartment,
   priority = false,
   isTrustedSeller = false,
+  compactOnMobile = false,
 }: ListingCardProps) {
+  const trustLabel = isTrustedSeller ? "Trusted" : "Verified"
+
   return (
-    <div className="h-full transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.005] active:scale-[0.995]">
+    <div className="h-full w-full min-w-0 transition-all duration-300 ease-out active:scale-[0.995] md:hover:-translate-y-1.5 md:hover:scale-[1.005]">
+      {compactOnMobile && (
+        <Link
+          href={`/item/${slug || id}`}
+          className="group flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-outline-variant/15 bg-white shadow-[0_6px_22px_rgba(26,38,86,0.05)] transition-all active:scale-[0.99] md:hidden"
+        >
+          <div className="relative aspect-[1/1.08] w-full overflow-hidden bg-surface-container-low">
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt={title}
+                fill
+                sizes="50vw"
+                priority={priority}
+                className="object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low text-xs font-medium text-on-surface-variant">
+                No image
+              </div>
+            )}
+            <div className="absolute left-2 top-2 z-10 scale-90 origin-top-left">
+              <ConditionBadge condition={condition} />
+            </div>
+            <button
+              type="button"
+              className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full border border-white/25 bg-white/80 text-on-surface-variant shadow-sm backdrop-blur"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            >
+              <Heart size={15} />
+            </button>
+          </div>
+
+          <div className="flex min-h-32 flex-1 flex-col p-3">
+            <h3 className="line-clamp-2 min-h-9 text-[13px] font-semibold leading-snug text-on-surface">
+              {title}
+            </h3>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
+              <span className="min-w-0 truncate font-display text-lg font-extrabold text-on-surface">
+                ₹{price.toLocaleString("en-IN")}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-verified/15 bg-verified/5 px-1.5 py-0.5 text-[8px] font-bold uppercase text-verified">
+                <ShieldCheck size={9} className="shrink-0" />
+                {trustLabel}
+              </span>
+            </div>
+            {sellerDepartment ? (
+              <span className="mt-2 truncate text-[9px] font-bold uppercase text-on-surface-variant/70">
+                {sellerDepartment}
+              </span>
+            ) : null}
+          </div>
+        </Link>
+      )}
+
       <Link
         href={`/item/${slug || id}`}
-        className="group flex h-full flex-col overflow-hidden rounded-3xl border border-outline-variant/15 bg-white dark:bg-surface-container-lowest shadow-[0_8px_30px_rgba(26,38,86,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(28,22,207,0.08)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
+        className={cn(
+          "group h-full w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-outline-variant/15 bg-white dark:bg-surface-container-lowest shadow-[0_8px_30px_rgba(26,38,86,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(28,22,207,0.08)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]",
+          compactOnMobile ? "hidden md:flex" : "flex"
+        )}
       >
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-container-low dark:bg-surface-container-high">
           {imageUrl ? (
@@ -104,4 +169,3 @@ export function ListingCard({
     </div>
   )
 }
-

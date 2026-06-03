@@ -49,6 +49,9 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(function (OneSignal: any) {
           OneSignal.login(user.id);
+          if (user.email) {
+            OneSignal.User.addEmail(user.email);
+          }
         });
       }
     });
@@ -58,6 +61,9 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       window.OneSignalDeferred.push(function (OneSignal: any) {
         if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user) {
           OneSignal.login(session.user.id);
+          if (session.user.email) {
+            OneSignal.User.addEmail(session.user.email);
+          }
         } else if (event === "SIGNED_OUT") {
           OneSignal.logout();
         }

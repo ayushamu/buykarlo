@@ -15,11 +15,9 @@ import {
   CheckCircle,
   AlertCircle,
   Upload,
-  Send,
-  Eye,
-  Key
+  Eye
 } from "lucide-react"
-import { updateProfile, signOutUser, submitIdCardVerification, verifyInstitutionalEmail } from "@/features/profile/actions"
+import { updateProfile, signOutUser, submitIdCardVerification } from "@/features/profile/actions"
 import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/image"
 
@@ -35,8 +33,6 @@ interface ProfileClientProps {
     trust_score: number | null
     phone_verified: boolean | null
     verification_status: string | null
-    institutional_email: string | null
-    institutional_verified: boolean | null
   }
 }
 
@@ -52,15 +48,6 @@ export function ProfileClient({ profile }: ProfileClientProps) {
   const [uploadingIdCard, setUploadingIdCard] = useState(false)
   const [idCardError, setIdCardError] = useState<string | null>(null)
   const [idCardSuccess, setIdCardSuccess] = useState(false)
-
-  // Institutional Email State
-  const [instEmail, setInstEmail] = useState(profile.institutional_email || "")
-  const [showOtpInput, setShowOtpInput] = useState(false)
-  const [emailOtp, setEmailOtp] = useState("")
-  const [sendingOtp, setSendingOtp] = useState(false)
-  const [verifyingEmail, setVerifyingEmail] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
-  const [emailSuccess, setEmailSuccess] = useState(false)
 
   const [isPending, startTransition] = useTransition()
   const [isLoggingOut, startLoggingOut] = useTransition()
@@ -159,67 +146,6 @@ export function ProfileClient({ profile }: ProfileClientProps) {
     }
   }
 
-  // Handle Send Institutional OTP (Simulated)
-  const handleSendEmailOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!instEmail) return
-
-    setSendingOtp(true)
-    setEmailError(null)
-    setEmailSuccess(false)
-
-    // Basic domain validation
-    const cleanEmail = instEmail.trim().toLowerCase()
-    const isAcademic = cleanEmail.endsWith(".edu") || cleanEmail.endsWith(".ac.in") || cleanEmail.endsWith(".edu.in")
-    if (!isAcademic) {
-      setEmailError("Please enter a valid college email (.edu, .ac.in, or .edu.in)")
-      setSendingOtp(false)
-      return
-    }
-
-    try {
-      // Simulate API call to send OTP
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      setShowOtpInput(true)
-    } catch (err: any) {
-      setEmailError("Failed to initiate email verification.")
-    } finally {
-      setSendingOtp(false)
-    }
-  }
-
-  // Handle Verify Institutional OTP (Simulated verify + real server action update)
-  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!emailOtp || emailOtp.length !== 6) {
-      setEmailError("Please enter a valid 6-digit verification code.")
-      return
-    }
-
-    setVerifyingEmail(true)
-    setEmailError(null)
-
-    try {
-      // Simulate verification check (accept any 6-digit code for friction-free verification)
-      await new Promise((resolve) => setTimeout(resolve, 1200))
-
-      // Trigger the real Server Action to set email as verified and boost trust score
-      const res = await verifyInstitutionalEmail(instEmail)
-      if (res.error) {
-        throw new Error(res.error)
-      }
-
-      setEmailSuccess(true)
-      setShowOtpInput(false)
-      setEmailOtp("")
-      router.refresh()
-    } catch (err: any) {
-      setEmailError(err.message || "Failed to verify college email.")
-    } finally {
-      setVerifyingEmail(false)
-    }
-  }
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left max-w-4xl mx-auto">
       {/* 1. Left Bento Column */}
@@ -283,7 +209,7 @@ export function ProfileClient({ profile }: ProfileClientProps) {
             />
           </div>
           <p className="font-body text-[10px] text-on-surface-variant/75 leading-normal">
-            Your Trust Score reflects successful trades (+5 per sale), institutional email verification (+20), and ID card approvals (+30).
+            Your Trust Score reflects successful trades (+5 per sale) and admin-approved student ID verification (+30).
           </p>
         </div>
 
@@ -291,20 +217,6 @@ export function ProfileClient({ profile }: ProfileClientProps) {
         <div className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 shadow-sm flex flex-col gap-3 text-xs font-body font-semibold">
           <h4 className="text-slate-800 mb-1">Verification Status</h4>
           
-          {/* Institutional Email Status */}
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-            <span className="text-on-surface-variant">College Email</span>
-            {profile.institutional_verified ? (
-              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle size={14} /> Verified (+20)
-              </span>
-            ) : (
-              <span className="text-amber-700 font-bold flex items-center gap-1">
-                <AlertCircle size={14} /> Unverified
-              </span>
-            )}
-          </div>
-
           {/* ID Card Status */}
           <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
             <span className="text-on-surface-variant">Student ID Card</span>
@@ -461,119 +373,15 @@ export function ProfileClient({ profile }: ProfileClientProps) {
         <div className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 md:p-8 shadow-sm flex flex-col gap-6 font-body text-xs">
           <div className="border-b border-outline-variant/10 pb-4">
             <h3 className="font-display text-lg font-extrabold text-slate-800">
-              Verification & Trust Upgrades
+              Student Verification
             </h3>
             <p className="text-on-surface-variant text-[11px] mt-1 leading-normal">
-              Increase your marketplace credibility and unlock student-verified badges. High trust score profiles sell up to 3x faster!
+              Upload your student ID card for admin review. Approved profiles receive the verified badge and a +30 trust boost.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* 1. College Institutional Email Verification */}
-            <div className="flex flex-col gap-4 p-5 rounded-[1.5rem] bg-slate-50 border border-slate-100 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full blur-xl"></div>
-              
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-slate-800 text-sm">Institutional Email</h4>
-                  <p className="text-on-surface-variant text-[10px]">Boost Trust Score by +20 points</p>
-                </div>
-                <div className="px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase bg-primary/10 text-primary rounded-full shrink-0">
-                  +20 Points
-                </div>
-              </div>
-
-              {emailError && (
-                <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-[11px] font-semibold flex items-center gap-1">
-                  <AlertCircle size={14} /> {emailError}
-                </div>
-              )}
-
-              {emailSuccess && (
-                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] font-semibold flex items-center gap-1">
-                  <CheckCircle size={14} /> College email verified successfully!
-                </div>
-              )}
-
-              {profile.institutional_verified ? (
-                <div className="flex flex-col gap-2 mt-2">
-                  <div className="flex items-center gap-2 text-emerald-800 bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                    <ShieldCheck className="size-5 text-emerald-600 shrink-0" />
-                    <div>
-                      <p className="font-bold text-xs">University Verified Student</p>
-                      <p className="text-[10px] text-emerald-700/80 mt-0.5 truncate">{profile.institutional_email}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-2 space-y-3">
-                  {!showOtpInput ? (
-                    <form onSubmit={handleSendEmailOtp} className="space-y-2">
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-on-surface-variant" />
-                        <input
-                          type="email"
-                          required
-                          value={instEmail}
-                          onChange={(e) => setInstEmail(e.target.value)}
-                          placeholder="e.g. you@student.amu.ac.in"
-                          className="w-full pl-9.5 pr-4 py-2.5 bg-white border border-outline-variant/20 rounded-xl outline-none focus:ring-1 focus:ring-primary/20 text-slate-800"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={sendingOtp}
-                        className="w-full py-2.5 btn-gradient text-white font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50 text-xs"
-                      >
-                        {sendingOtp ? <Loader2 size={14} className="animate-spin" /> : <Send size={12} />}
-                        <span>Verify College Email</span>
-                      </button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleVerifyEmailOtp} className="space-y-3">
-                      <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-xl text-[10px] text-amber-800 font-semibold leading-normal">
-                        Simulating email OTP. Enter any 6 digits to verify email address.
-                      </div>
-                      <div className="relative">
-                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-on-surface-variant" />
-                        <input
-                          type="text"
-                          maxLength={6}
-                          required
-                          value={emailOtp}
-                          onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ""))}
-                          placeholder="Enter 6-digit OTP code"
-                          className="w-full pl-9.5 pr-4 py-2.5 bg-white border border-outline-variant/20 rounded-xl outline-none focus:ring-1 focus:ring-primary/20 text-slate-800 font-mono text-center tracking-widest text-sm"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowOtpInput(false)
-                            setEmailOtp("")
-                            setEmailError(null)
-                          }}
-                          className="w-1/3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer text-xs"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={verifyingEmail}
-                          className="flex-1 py-2 btn-gradient text-white font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50 text-xs"
-                        >
-                          {verifyingEmail ? <Loader2 size={14} className="animate-spin" /> : null}
-                          <span>Verify OTP Code</span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Student ID Card Upload & Verification */}
+          <div className="grid grid-cols-1 gap-6">
+            {/* Student ID Card Upload & Verification */}
             <div className="flex flex-col gap-4 p-5 rounded-[1.5rem] bg-slate-50 border border-slate-100 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full blur-xl"></div>
 
@@ -649,7 +457,7 @@ export function ProfileClient({ profile }: ProfileClientProps) {
                   <button
                     type="submit"
                     disabled={!idCardFile || uploadingIdCard}
-                    className="w-full py-2.5 btn-gradient text-white font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50 text-xs"
+                    className="w-full py-2.5 action-gradient text-white font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-50 text-xs"
                   >
                     {uploadingIdCard ? <Loader2 size={14} className="animate-spin" /> : <Upload size={12} />}
                     <span>Submit for Verification</span>

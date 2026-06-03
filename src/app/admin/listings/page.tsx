@@ -2,24 +2,41 @@
 
 import { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
-import { Search, Loader2, ShieldAlert, CheckCircle2, AlertTriangle, Eye, EyeOff } from "lucide-react"
-import { getAdminListings, unlistListingByAdmin } from "@/features/admin/actions"
-import { updateListingStatus } from "@/features/listings/actions"
+import { Search, Loader2, ShieldAlert, CheckCircle2, AlertTriangle, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react"
+import { getAdminListings, updateListingStatusByAdmin } from "@/features/admin/actions"
 import { cn } from "@/lib/utils"
+
+const PAGE_SIZE = 12
 
 export default function AdminListingsPage() {
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  })
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
 
-  const loadListings = async () => {
+  const loadListings = async (nextPage = page) => {
     setLoading(true)
-    const res = await getAdminListings()
+    const res = await getAdminListings({
+      page: nextPage,
+      pageSize: PAGE_SIZE,
+      searchQuery,
+      status: statusFilter,
+    })
+
     if (res.success && res.listings) {
       setListings(res.listings)
+      if (res.pagination) {
+        setPagination(res.pagination)
+      }
     } else {
       setMessage({ text: res.error || "Failed to load listings.", type: "error" })
     }
@@ -27,16 +44,19 @@ export default function AdminListingsPage() {
   }
 
   useEffect(() => {
-    loadListings()
-  }, [])
+    const timeout = window.setTimeout(() => {
+      loadListings(page)
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [page, searchQuery, statusFilter])
 
   const handleToggleStatus = (listingId: string, currentStatus: string) => {
     setMessage(null)
     const newStatus = currentStatus === "active" ? "hidden" : "active"
     
     startTransition(async () => {
-      // Call standard update status action, which supports hidden/active toggles
-      const res = await updateListingStatus(listingId, newStatus)
+      const res = await updateListingStatusByAdmin(listingId, newStatus)
       if (res.success) {
         setMessage({ 
           text: `Listing successfully ${newStatus === "active" ? "relisted" : "unlisted"}.`, 
@@ -45,25 +65,15 @@ export default function AdminListingsPage() {
         setListings(prev => 
           prev.map(l => l.id === listingId ? { ...l, status: newStatus } : l)
         )
+        loadListings(page)
       } else {
         setMessage({ text: res.error || "Action failed.", type: "error" })
       }
     })
   }
 
-  // Filter listings list
-  const filteredListings = listings.filter((l) => {
-    const matchesSearch = 
-      l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (l.seller?.full_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (l.seller?.email || "").toLowerCase().includes(searchQuery.toLowerCase())
-    
-    const matchesStatus = 
-      statusFilter === "all" || 
-      l.status === statusFilter
-    
-    return matchesSearch && matchesStatus
-  })
+  const firstVisibleItem = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1
+  const lastVisibleItem = Math.min(pagination.page * pagination.pageSize, pagination.total)
 
   return (
     <div className="flex flex-col gap-6 text-left">
@@ -99,7 +109,10 @@ export default function AdminListingsPage() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setPage(1)
+            }}
             placeholder="Search items or sellers..."
             className="flex-1 bg-transparent border-none outline-none font-body text-xs px-2.5 py-1.5 text-on-surface"
           />
@@ -115,7 +128,10 @@ export default function AdminListingsPage() {
           ].map((status) => (
             <button
               key={status.id}
-              onClick={() => setStatusFilter(status.id)}
+              onClick={() => {
+                setStatusFilter(status.id)
+                setPage(1)
+              }}
               className={cn(
                 "px-4 py-2 rounded-full font-body text-xs font-semibold cursor-pointer transition-all border whitespace-nowrap",
                 statusFilter === status.id
@@ -131,13 +147,42 @@ export default function AdminListingsPage() {
 
       {/* Catalog Table */}
       <div className="bg-white border border-outline-variant/20 rounded-[2rem] shadow-sm overflow-hidden">
+        <div className="flex flex-col gap-2 border-b border-outline-variant/15 bg-white px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="font-display text-sm font-extrabold text-slate-800">Listings Review</h3>
+            <p className="font-body text-[11px] text-on-surface-variant">
+              Showing {firstVisibleItem}-{lastVisibleItem} of {pagination.total} matching listings.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={loading || pagination.page <= 1}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-outline-variant/20 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Previous listings page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="min-w-20 text-center font-body text-[11px] font-bold text-on-surface-variant">
+              Page {pagination.page} / {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+              disabled={loading || pagination.page >= pagination.totalPages}
+              className="inline-flex size-9 items-center justify-center rounded-full border border-outline-variant/20 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Next listings page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-2 text-on-surface-variant">
               <Loader2 className="animate-spin text-primary" size={24} />
               <span className="font-body text-xs font-semibold">Loading catalog details...</span>
             </div>
-          ) : filteredListings.length === 0 ? (
+          ) : listings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
               <ShieldAlert className="text-outline/40" size={32} />
               <h4 className="font-body text-sm font-bold text-on-surface">No products found</h4>
@@ -157,7 +202,7 @@ export default function AdminListingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {filteredListings.map((l) => (
+                {listings.map((l) => (
                   <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
                     {/* Product */}
                     <td className="px-6 py-4 max-w-[240px]">

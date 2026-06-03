@@ -359,7 +359,7 @@ function MessagesContent() {
   }
 
   return (
-    <div className="flex h-[calc(100svh-190px)] w-full max-w-full overflow-hidden rounded-3xl border border-outline-variant/20 bg-surface-container-lowest shadow-sm premium-shadow md:h-[calc(100vh-180px)]">
+    <div className="flex h-[calc(100svh-150px)] w-full max-w-full overflow-hidden rounded-[1.5rem] border border-outline-variant/20 bg-surface-container-lowest shadow-sm premium-shadow md:h-[calc(100vh-180px)] md:rounded-3xl">
       {/* 1. Sidebar: Chat List */}
       <aside
         className={cn(
@@ -367,10 +367,10 @@ function MessagesContent() {
           activeConvId && "hidden md:flex"
         )}
       >
-        <div className="p-stack-lg border-b border-outline-variant/20">
-          <h2 className="font-display text-2xl font-extrabold tracking-tight text-on-surface">Messages</h2>
+        <div className="border-b border-outline-variant/20 px-5 py-4 md:p-stack-lg">
+          <h2 className="font-display text-[1.65rem] font-extrabold tracking-tight text-on-surface md:text-2xl">Messages</h2>
           <p className="text-xs text-on-surface-variant font-medium mt-1">Grouped by listed items</p>
-          <div className="mt-stack-md flex gap-stack-sm overflow-x-auto pb-stack-xs scrollbar-none">
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none md:mt-stack-md md:gap-stack-sm md:pb-stack-xs">
             <button
               onClick={() => setFilterMode("all")}
               className={cn(
@@ -438,7 +438,7 @@ function MessagesContent() {
                     router.push(`/messages?conversationId=${conv.id}`, { scroll: false })
                   }}
                   className={cn(
-                    "p-stack-md flex gap-stack-md items-center cursor-pointer transition-all border-l-4 border-transparent select-none",
+                    "flex cursor-pointer select-none items-center gap-3 border-l-4 border-transparent p-4 transition-all md:gap-stack-md md:p-stack-md",
                     isActive
                       ? "bg-primary/10 text-primary border-primary dark:bg-primary-container/20 dark:border-primary-fixed"
                       : "hover:bg-surface-container-low"
@@ -526,15 +526,15 @@ function MessagesContent() {
         {activeConvId ? (
           <>
             {/* Chat Pane Header */}
-            <header className="z-10 flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-outline-variant/30 bg-surface px-3 py-3 md:h-16 md:px-stack-lg md:py-0">
-              <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-stack-md">
+            <header className="z-10 flex min-w-0 shrink-0 items-center justify-between gap-2.5 border-b border-outline-variant/30 bg-surface px-2.5 py-2 md:h-16 md:gap-3 md:px-stack-lg md:py-0">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-stack-md">
                 {/* Back navigation on mobile */}
                 <button
                   onClick={() => {
                     setActiveConvId(null)
                     router.push("/messages", { scroll: false })
                   }}
-                  className="flex shrink-0 rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-low md:hidden"
+                  className="flex shrink-0 rounded-full p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-low md:hidden"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft size={20} />
@@ -545,10 +545,10 @@ function MessagesContent() {
                     <img
                       src={otherParticipant.avatarUrl}
                       alt={otherParticipant.fullName}
-                      className="h-11 w-11 rounded-full border border-outline-variant/20 object-cover md:h-10 md:w-10"
+                      className="h-10 w-10 rounded-full border border-outline-variant/20 object-cover md:h-10 md:w-10"
                     />
                   ) : (
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-md font-bold text-primary md:h-10 md:w-10">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary md:h-10 md:w-10">
                       {otherParticipant?.fullName?.substring(0, 2).toUpperCase() || "CU"}
                     </div>
                   )}
@@ -557,7 +557,7 @@ function MessagesContent() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="min-w-0 truncate font-body text-base font-extrabold leading-tight text-on-surface md:text-label-lg">
+                    <span className="min-w-0 truncate font-body text-[15px] font-extrabold leading-tight text-on-surface md:text-label-lg">
                       {otherParticipant?.fullName}
                     </span>
                     <span className="shrink-0 text-primary dark:text-primary-fixed-dim" aria-label="Verified student">
@@ -571,7 +571,7 @@ function MessagesContent() {
               </div>
 
               {/* Chat Actions */}
-              <div className="flex shrink-0 items-center gap-1.5 md:gap-stack-sm">
+              <div className="flex shrink-0 items-center gap-1 md:gap-stack-sm">
                 {activeListing?.status !== "sold" && !activeConversation.isBuyer && (
                   <button
                     onClick={() => setMarkSoldOpen(true)}
@@ -585,21 +585,21 @@ function MessagesContent() {
                   <Link
                     href={`/item/${activeListing.slug || activeListing.id}`}
                     target="_blank"
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/20 bg-surface-container text-on-surface-variant transition-all hover:bg-surface-container-high sm:h-auto sm:w-auto sm:gap-1 sm:px-3 sm:py-1.5 sm:font-body sm:text-label-sm sm:font-semibold"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-outline-variant/20 bg-surface-container text-on-surface-variant transition-all hover:bg-surface-container-high sm:h-auto sm:w-auto sm:gap-1 sm:px-3 sm:py-1.5 sm:font-body sm:text-label-sm sm:font-semibold"
                     aria-label="View deal"
                   >
                     <span className="hidden sm:inline">View Deal</span>
                     <ExternalLink size={12} />
                   </Link>
                 )}
-                <button className="material-symbols-outlined rounded-full p-2 text-on-surface-variant hover:bg-surface-container cursor-pointer" aria-label="Chat actions">
+                <button className="material-symbols-outlined cursor-pointer rounded-full p-1.5 text-on-surface-variant hover:bg-surface-container md:p-2" aria-label="Chat actions">
                   <MoreVertical size={18} />
                 </button>
               </div>
             </header>
 
             {/* Meetup Safety Banner */}
-            <div className="bg-emerald-500/5 px-stack-lg py-2.5 flex items-center justify-between border-b border-emerald-500/10 shrink-0">
+            <div className="flex shrink-0 items-center justify-between border-b border-emerald-500/10 bg-emerald-500/5 px-3 py-2 md:px-stack-lg md:py-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <Shield size={16} className="text-emerald-600 shrink-0" />
                 <p className="font-body text-[11px] font-medium text-emerald-800 dark:text-emerald-300 truncate">
@@ -613,22 +613,22 @@ function MessagesContent() {
               <Link
                 href={`/item/${activeListing.slug || activeListing.id}`}
                 target="_blank"
-                className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-outline-variant/20 bg-surface/50 px-3 py-2.5 transition-colors hover:bg-surface-container-low md:px-stack-lg md:py-2"
+                className="flex min-w-0 shrink-0 items-center justify-between gap-2.5 border-b border-outline-variant/20 bg-surface/50 px-3 py-2 transition-colors hover:bg-surface-container-low md:gap-3 md:px-stack-lg"
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   {activeListing.imageUrl ? (
                     <img
                       src={activeListing.imageUrl}
                       alt={activeListing.title}
-                      className="h-10 w-10 shrink-0 rounded-lg border border-outline-variant/30 object-cover md:h-8 md:w-8 md:rounded"
+                      className="h-9 w-9 shrink-0 rounded-lg border border-outline-variant/30 object-cover md:h-8 md:w-8 md:rounded"
                     />
                   ) : (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-outline-variant/20 bg-surface-container md:h-8 md:w-8 md:rounded">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline-variant/20 bg-surface-container md:h-8 md:w-8 md:rounded">
                       <ImageIcon size={14} className="text-outline" />
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="min-w-0 truncate font-body text-sm font-bold leading-tight text-on-surface md:text-label-sm">
+                    <p className="min-w-0 truncate font-body text-[13px] font-bold leading-tight text-on-surface md:text-label-sm">
                       {activeListing.title}
                     </p>
                     <div className="mt-1 flex min-w-0 items-center gap-2">
@@ -648,7 +648,7 @@ function MessagesContent() {
             )}
 
             {/* Message Area scroll */}
-            <div className="flex flex-1 flex-col gap-stack-md overflow-y-auto bg-slate-50/20 p-3 scrollbar-none dark:bg-zinc-950/20 md:p-stack-lg">
+            <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-slate-50/20 p-3 scrollbar-none dark:bg-zinc-950/20 md:gap-stack-md md:p-stack-lg">
               {loadingMsgs ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -737,7 +737,7 @@ function MessagesContent() {
             </div>
 
             {/* Suggestions & Input Area */}
-            <div className="shrink-0 border-t border-outline-variant/20 bg-surface p-3 md:p-stack-lg">
+            <div className="shrink-0 border-t border-outline-variant/20 bg-surface px-3 pb-3 pt-2.5 md:p-stack-lg">
               {/* Quick Reply pills suggestion */}
               <div className="flex gap-2 overflow-x-auto pb-stack-sm scrollbar-none select-none">
                 {getQuickReplies().map((reply) => (

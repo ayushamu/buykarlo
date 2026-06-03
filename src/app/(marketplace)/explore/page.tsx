@@ -13,19 +13,20 @@ import {
   ChevronDown,
   Filter
 } from "lucide-react"
-import { Input } from "@/components/ui/input"
 import { ListingCard } from "@/components/listing/ListingCard"
+import { MarketplaceHeroCarousel } from "@/components/marketplace/MarketplaceHeroCarousel"
+import { MobileCategoryStrip } from "@/components/marketplace/MobileCategoryStrip"
 import { getActiveListings } from "@/features/listings/actions"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import { CAMPUSES } from "@/lib/constants"
 
 const CATEGORIES = [
-  { id: "all", name: "All", icon: Sparkles },
-  { id: "electronics", name: "Electronics", icon: Laptop },
-  { id: "books", name: "Books", icon: BookOpen },
-  { id: "cycles", name: "Cycles", icon: Bike },
-  { id: "dorm-decor", name: "Dorm Decor", icon: HomeIcon },
+  { id: "all", name: "All", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
+  { id: "electronics", name: "Electronics", shortName: "Electronics", icon: Laptop, tone: "sky" as const },
+  { id: "books", name: "Books", shortName: "Books", icon: BookOpen, tone: "amber" as const },
+  { id: "cycles", name: "Cycles", shortName: "Cycles", icon: Bike, tone: "emerald" as const },
+  { id: "dorm-decor", name: "Dorm Decor", shortName: "Dorm Decor", icon: HomeIcon, tone: "rose" as const },
 ]
 
 function ExploreContent() {
@@ -157,10 +158,18 @@ function ExploreContent() {
     router.replace(`/explore?category=${catId}`, { scroll: false })
   }
 
+  const hasActiveResultFilter =
+    selectedCategory !== "all" ||
+    searchQuery.trim().length > 0 ||
+    selectedCondition !== "all" ||
+    selectedPriceRange !== "all"
+
   return (
-    <div className="mx-auto max-w-container-max px-margin-mobile py-8 md:px-margin-desktop md:py-12 animate-in fade-in duration-300">
+    <div className="mx-auto max-w-container-max overflow-x-hidden px-margin-mobile py-8 md:px-margin-desktop md:py-12 animate-in fade-in duration-300">
+      <MarketplaceHeroCarousel campusName={activeCampusShort} className="mb-8 hidden md:block" />
+
       {/* Category Layout Section */}
-      <section className="flex flex-col md:flex-row gap-8 items-stretch pt-4 text-left">
+      <section className="flex min-w-0 flex-col md:flex-row gap-8 items-stretch pt-4 text-left">
         {/* Left Sticky Sidebar (Categories) - Desktop Only */}
         <aside className="hidden md:flex w-64 shrink-0 flex-col space-y-2 sticky top-24 self-start bg-white border border-outline-variant/30 rounded-3xl p-4 shadow-sm select-none">
           <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/75 mb-1">
@@ -196,47 +205,26 @@ function ExploreContent() {
           )}
         </aside>
 
-        {/* Mobile Categories list (Horizontal scroll) - Mobile Only */}
-        <div className="flex md:hidden flex-col gap-2 shrink-0 select-none w-full">
-          <p className="font-body text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/80 px-1">
-            Browse Categories
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none w-full">
-            {CATEGORIES.map((cat) => {
-              const Icon = cat.icon
-              const isActive = selectedCategory === cat.id
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => selectCategoryAndRedirect(cat.id)}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-full font-body text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
-                    isActive
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                  )}
-                >
-                  <Icon size={14} />
-                  <span>{cat.name}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <MobileCategoryStrip
+          categories={CATEGORIES}
+          selectedCategory={selectedCategory}
+          onSelectCategory={selectCategoryAndRedirect}
+          className="shrink-0 md:hidden"
+        />
 
         {/* Right Content Area (Filters + Listings Grid) */}
-        <div className="flex-1 flex flex-col space-y-6">
+        <div className="min-w-0 flex-1 flex flex-col space-y-6">
           {/* Search & Collapsible Filters Topbar */}
-          <div className="bg-white border border-outline-variant/30 rounded-[2rem] p-4 shadow-sm md:p-6 space-y-4">
+          <div className="min-w-0 overflow-hidden bg-white border border-outline-variant/30 rounded-[2rem] p-4 shadow-sm md:p-6 space-y-4">
             {/* Search bar inside the filters container */}
-            <div className="relative w-full shadow-sm rounded-full bg-surface-container-low border border-outline-variant/30 px-4 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all flex items-center">
+            <div className="relative w-full min-w-0 shadow-sm rounded-full bg-surface-container-low border border-outline-variant/30 px-4 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all flex items-center">
               <Search size={18} className="text-outline shrink-0 ml-1" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search within ${selectedCategory === "all" ? "all listings" : selectedCategory}...`}
-                className="flex-1 bg-transparent border-none outline-none font-body text-sm px-3 text-on-surface py-1.5"
+                className="min-w-0 flex-1 bg-transparent border-none outline-none font-body text-sm px-3 text-on-surface py-1.5"
               />
               {searchQuery && (
                 <button
@@ -249,12 +237,16 @@ function ExploreContent() {
             </div>
 
             {/* Quick Filter Info & Selectors Row */}
-            <div className="flex flex-col gap-4 border-t border-outline-variant/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <p className="font-body text-sm font-semibold text-on-surface">
-                  <span className="font-extrabold">{processedListings.length}</span> items found
-                </p>
-                {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+            <div className={cn(
+              "flex flex-col gap-3 border-t border-outline-variant/10 pt-3 sm:flex-row sm:items-center md:gap-4 md:pt-4",
+              hasActiveResultFilter ? "sm:justify-between" : "sm:justify-end"
+            )}>
+              {hasActiveResultFilter && (
+                <div className="flex items-center gap-3">
+                  <p className="font-body text-sm font-semibold text-on-surface">
+                    <span className="font-extrabold">{processedListings.length}</span> products available
+                  </p>
+                  {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
                   <>
                     <div className="h-4 w-px bg-outline-variant/30" />
                     <button
@@ -267,11 +259,12 @@ function ExploreContent() {
                       Reset Filters
                     </button>
                   </>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Sorting and Advanced Filter Button */}
-              <div className="flex items-center gap-2 sm:self-auto self-end">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:self-auto self-end">
                 {/* HTML Select for Sorting (Saves massive screen space) */}
                 <div className="relative">
                   <select
@@ -372,7 +365,7 @@ function ExploreContent() {
           </div>
 
           {/* Grid of Listings */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
             {isLoading ? (
               [...Array(8)].map((_, i) => (
                 <div key={i} className="animate-pulse bg-surface-container-low rounded-2xl aspect-[4/3] w-full border border-outline-variant/20 flex flex-col">
@@ -385,7 +378,9 @@ function ExploreContent() {
               ))
             ) : processedListings.length > 0 ? (
               processedListings.map((listing, index) => (
-                <ListingCard key={listing.id} {...listing} priority={index < 4} />
+                <div key={listing.id} className="min-w-0">
+                  <ListingCard {...listing} priority={index < 4} compactOnMobile />
+                </div>
               ))
             ) : (
               <div className="col-span-full py-16 text-center flex flex-col items-center justify-center space-y-3 bg-surface-container-low/40 rounded-3xl border border-outline-variant/10 w-full px-6">

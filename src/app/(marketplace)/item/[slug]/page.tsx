@@ -2,7 +2,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import {
-  AlertCircle,
   BadgeCheck,
   CheckCircle2,
   ChevronRight,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react"
 import { getActiveListings, getListingBySlug, getSavedListingStatus } from "@/features/listings/actions"
 import { ProductInteraction } from "./_components/ProductInteraction"
+import { ReportListingButton } from "./_components/ReportListingButton"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -173,16 +173,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
         isInitiallySaved={"success" in savedState && savedState.success ? savedState.isSaved : false}
       />
 
-      <div className="mt-5 grid min-w-0 gap-5 px-4 md:px-0 xl:grid-cols-[1fr_370px]">
-        <div className="min-w-0 rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:p-6">
+      <div className="mt-5 grid min-w-0 gap-4 px-4 md:px-0 xl:grid-cols-[1fr_360px]">
+        <div className="min-w-0 rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_18px_36px_rgba(15,23,42,0.05)] md:p-5">
           <div className="flex min-w-0 items-start gap-2">
-            <MessageSquare size={18} className="mt-0.5 shrink-0 text-secondary" />
-            <h2 className="min-w-0 text-sm font-bold uppercase tracking-[0.14em] text-primary break-words md:tracking-[0.18em]">What to check before buying</h2>
+            <MessageSquare size={17} className="mt-0.5 shrink-0 text-secondary" />
+            <h2 className="min-w-0 break-words text-xs font-bold uppercase tracking-[0.14em] text-primary md:text-sm">What to check before buying</h2>
           </div>
-          <ul className="mt-5 space-y-3">
+          <ul className="mt-4 space-y-2.5">
             {checklist.map((item) => (
               <li key={item} className="flex min-w-0 gap-3 text-sm leading-6 text-on-surface-variant">
-                <CheckCircle2 size={16} className="mt-1 shrink-0 text-secondary" />
+                <CheckCircle2 size={15} className="mt-1 shrink-0 text-secondary" />
                 <span className="min-w-0 break-words">{item}</span>
               </li>
             ))}
@@ -190,27 +190,27 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </div>
 
         {listing.seller ? (
-          <section className="min-w-0 overflow-hidden rounded-[2rem] border border-outline-variant/20 bg-white p-5 shadow-[0_20px_40px_rgba(15,23,42,0.06)] md:p-6">
-            <div className="flex min-w-0 items-center gap-4">
+          <section className="min-w-0 overflow-hidden rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_18px_36px_rgba(15,23,42,0.05)] md:p-5">
+            <div className="flex min-w-0 items-center gap-3">
               {listing.seller.avatarUrl ? (
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-outline-variant/25 shadow-sm">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-outline-variant/25 shadow-sm">
                   <img src={listing.seller.avatarUrl} alt={listing.seller.fullName} className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
                   {listing.seller.fullName.slice(0, 2).toUpperCase()}
                 </div>
               )}
 
               <div className="min-w-0">
-                <h3 className="truncate font-display text-xl font-bold text-on-surface md:text-2xl">{listing.seller.fullName}</h3>
+                <h3 className="truncate font-display text-lg font-bold text-on-surface md:text-xl">{listing.seller.fullName}</h3>
                 <p className="truncate text-sm font-medium text-on-surface-variant">
                   {listing.seller.department}, {listing.seller.university}
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 border-t border-outline-variant/20 pt-5">
+            <div className="mt-4 border-t border-outline-variant/20 pt-4">
               <div className="flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
                 <span className="shrink-0">Trust Score</span>
                 <span className="inline-flex min-w-0 items-center justify-end gap-1 text-right font-bold text-on-surface">
@@ -218,23 +218,23 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   {trustRating} <span className="font-medium text-on-surface-variant">({trustScore}/100)</span>
                 </span>
               </div>
-              <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
                 <span className="shrink-0">Response Time</span>
                 <span className="min-w-0 text-right font-semibold text-on-surface">Usually quick in chat</span>
               </div>
-              <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
                 <span className="shrink-0">Active Listings</span>
                 <span className="min-w-0 text-right font-semibold text-on-surface">{listing.seller.activeListingsCount}</span>
               </div>
-              <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 text-sm text-on-surface-variant">
                 <span className="shrink-0">Member Since</span>
                 <span className="min-w-0 text-right font-semibold text-on-surface">{sellerJoinedYear}</span>
               </div>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-4">
               {listing.seller.email === "buykarlo.official@gmail.com" ? (
-                <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-secondary px-5 py-2.5 text-sm font-black uppercase tracking-wider text-white shadow-[0_12px_24px_rgba(28,22,207,0.22)]">
+                <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-secondary px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[0_12px_24px_rgba(28,22,207,0.18)]">
                   <BadgeCheck size={16} className="fill-white" />
                   BuyKarlo Trusted
                 </div>
@@ -249,25 +249,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
         ) : null}
       </div>
 
-      <div className="mt-8 flex justify-end px-4 md:px-0">
-        <button className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-semibold text-error transition-colors hover:bg-error/5">
-          <AlertCircle size={16} />
-          Report Listing
-        </button>
+      <div className="mt-6 flex justify-end px-4 md:px-0">
+        <ReportListingButton listingId={listing.id} />
       </div>
 
       {moreFromCampus.length > 0 && (
-        <section className="mt-14 min-w-0 border-t border-outline-variant/10 px-4 pt-8 md:px-0">
-          <div className="mb-7 flex items-end justify-between gap-4">
+        <section className="mt-10 min-w-0 border-t border-outline-variant/10 px-4 pt-7 md:px-0">
+          <div className="mb-6 flex items-end justify-between gap-4">
             <div>
-              <h2 className="font-display text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
+              <h2 className="font-display text-2xl font-extrabold tracking-tight text-on-surface md:text-3xl">
                 More from {listing.campus}
               </h2>
-              <p className="mt-2 text-base text-on-surface-variant md:text-lg">
+              <p className="mt-2 text-sm text-on-surface-variant md:text-base">
                 Handpicked essentials from your campus community
               </p>
             </div>
-            <Link href={`/${listing.categorySlug}`} className="text-base font-bold text-primary md:text-lg">
+            <Link href={`/${listing.categorySlug}`} className="shrink-0 text-sm font-bold text-primary md:text-base">
               View All →
             </Link>
           </div>
@@ -277,7 +274,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
               <Link
                 key={related.id}
                 href={`/item/${related.slug || related.id}`}
-                className="group overflow-hidden rounded-[2rem] border border-outline-variant/15 bg-white shadow-[0_20px_40px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_28px_48px_rgba(15,23,42,0.1)]"
+                className="group overflow-hidden rounded-[1.5rem] border border-outline-variant/15 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_24px_42px_rgba(15,23,42,0.09)]"
               >
                 <div className="relative aspect-[1.02/1] overflow-hidden bg-surface-container-low">
                   {related.imageUrl ? (

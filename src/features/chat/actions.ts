@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
-import { sendChatPushNotification } from "@/lib/onesignal"
+import { sendChatNotifications } from "@/lib/onesignal"
 
 /**
  * Get a conversation by listingId, creating a new one if it doesn't exist.
@@ -286,13 +286,13 @@ export async function sendMessage(conversationId: string, content: string) {
     const senderName = isBuyer ? (rawBuyer?.full_name || "Campus User") : (rawSeller?.full_name || "Campus User")
     const receiverId = isBuyer ? conv.seller_id : conv.buyer_id
 
-    sendChatPushNotification({
+    sendChatNotifications({
       receiverId,
       senderName,
       messageContent: content.trim(),
       conversationId
     }).catch((err) => {
-      console.error("Error dispatching push notification:", err)
+      console.error("Error dispatching chat notifications:", err)
     })
 
     revalidatePath("/messages")

@@ -64,7 +64,7 @@ function renderFormattedDescription(desc: string) {
   }
 
   return (
-    <div className="space-y-2 font-body text-[15px] leading-7 text-on-surface-variant md:text-base md:leading-8 break-words [word-break:break-word] [overflow-wrap:break-word]">
+    <div className="space-y-2 font-body text-sm leading-6 text-on-surface-variant md:text-[15px] md:leading-7 break-words [word-break:break-word] [overflow-wrap:break-word]">
       {lines.map((line, idx) => {
         const trimmed = line.trim()
         
@@ -336,11 +336,11 @@ export function ProductInteraction({
 
   return (
     <div className="w-full min-w-0 space-y-5 overflow-x-hidden px-4 md:px-0">
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_370px] xl:items-start">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
         <div className="min-w-0 space-y-3">
-          <div className="relative min-w-0 overflow-hidden rounded-[1.5rem] border border-outline-variant/20 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.08)] md:rounded-[2rem]">
-            <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-on-surface shadow-sm">
-              <span className="h-2.5 w-2.5 rounded-full bg-success" />
+          <div className="relative min-w-0 overflow-hidden rounded-[1.35rem] border border-outline-variant/20 bg-white shadow-[0_20px_42px_rgba(15,23,42,0.07)] md:rounded-[1.75rem]">
+            <div className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-white/95 px-3.5 py-2 text-sm font-semibold text-on-surface shadow-sm">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-success" />
               Available
             </div>
 
@@ -364,18 +364,19 @@ export function ProductInteraction({
                   onPointerMove={handlePointerMove}
                   onPointerEnter={handlePointerEnter}
                   onPointerLeave={handlePointerLeave}
-                  className="relative aspect-[4/3] w-full min-w-0 cursor-zoom-in overflow-hidden bg-surface-container-low"
+                  className="relative aspect-[4/3] w-full min-w-0 cursor-zoom-in overflow-hidden bg-white"
                 >
                   <Image
                     src={activeMedia.url}
                     alt={title}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 64vw, 860px"
                     priority
                     style={{
                       transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-                      transform: isHovered ? "scale(2)" : "scale(1)",
+                      transform: isHovered ? "scale(1.65)" : "scale(1)",
                     }}
-                    className="object-cover transition-transform duration-[150ms] ease-out will-change-transform motion-reduce:transition-none motion-reduce:transform-none"
+                    className="object-contain p-3 transition-transform duration-[150ms] ease-out will-change-transform motion-reduce:transition-none motion-reduce:transform-none md:p-6"
                   />
                 </div>
               )
@@ -395,7 +396,7 @@ export function ProductInteraction({
                     key={`${item.url}-${index}`}
                     onClick={() => setActiveMediaIndex(index)}
                     className={cn(
-                      "relative h-20 w-20 shrink-0 overflow-hidden rounded-[1.1rem] border-2 bg-white shadow-sm transition-all md:h-24 md:w-24 cursor-pointer",
+                      "relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-[1rem] border-2 bg-white shadow-sm transition-all md:h-[5.5rem] md:w-[5.5rem]",
                       isActive ? "border-primary scale-[1.02]" : "border-outline-variant/20 hover:border-primary/50"
                     )}
                   >
@@ -411,7 +412,7 @@ export function ProductInteraction({
                         </div>
                       </div>
                     ) : (
-                      <Image src={item.url} alt={`${title} thumbnail ${index + 1}`} fill className="object-cover" />
+                      <Image src={item.url} alt={`${title} thumbnail ${index + 1}`} fill sizes="96px" className="object-cover" />
                     )}
                   </button>
                 )
@@ -421,9 +422,9 @@ export function ProductInteraction({
         </div>
 
         <div className="min-w-0 space-y-4 xl:sticky xl:top-28">
-          <div className="min-w-0 rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_24px_48px_rgba(15,23,42,0.08)] md:rounded-[2rem] md:p-6">
+          <div className="min-w-0 rounded-[1.35rem] border border-outline-variant/20 bg-white p-4 shadow-[0_20px_42px_rgba(15,23,42,0.07)] md:rounded-[1.75rem] md:p-6">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-              <span className="inline-flex max-w-full rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary md:px-4 md:text-xs md:tracking-[0.18em]">
+              <span className="inline-flex max-w-full rounded-full bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-primary md:px-4 md:text-[11px]">
                 {categoryName}
               </span>
               <div className="flex shrink-0 items-center gap-2">
@@ -450,36 +451,36 @@ export function ProductInteraction({
               </div>
             </div>
 
-            <h1 className="mt-4 max-w-full break-words font-display text-[1.8rem] font-extrabold leading-tight text-on-surface md:text-[2.4rem]">
+            <h1 className="mt-4 max-w-full break-words font-display text-2xl font-extrabold leading-[1.12] text-on-surface md:text-3xl">
               {title}
             </h1>
 
             <div className="mt-4 flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
-              <span className="min-w-0 font-display text-[2.35rem] font-extrabold tracking-tight text-primary md:text-[3.2rem]">
+              <span className="min-w-0 font-display text-4xl font-extrabold tracking-tight text-primary md:text-[2.65rem]">
                 ₹{price.toLocaleString("en-IN")}
               </span>
-              <span className="text-lg font-semibold text-on-surface-variant/60 line-through md:text-2xl">
+              <span className="pb-1 text-base font-semibold text-on-surface-variant/60 line-through md:text-lg">
                 ₹{originalPrice.toLocaleString("en-IN")}
               </span>
-              <span className="text-base font-bold text-success md:text-lg">{savingsPercent}% OFF</span>
+              <span className="pb-1 text-sm font-bold text-success md:text-base">{savingsPercent}% OFF</span>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.5rem] border border-outline-variant/20 bg-surface-container-low/30 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">Condition</p>
-                <p className="mt-2 text-xl font-bold capitalize text-on-surface md:text-2xl">{conditionLabel}</p>
+              <div className="rounded-[1.25rem] border border-outline-variant/20 bg-surface-container-low/30 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Condition</p>
+                <p className="mt-2 text-lg font-bold capitalize leading-tight text-on-surface md:text-xl">{conditionLabel}</p>
               </div>
-              <div className="rounded-[1.5rem] border border-outline-variant/20 bg-surface-container-low/30 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">Location</p>
-                <p className="mt-2 text-xl font-bold text-on-surface md:text-2xl">{displayLocation}</p>
+              <div className="rounded-[1.25rem] border border-outline-variant/20 bg-surface-container-low/30 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Location</p>
+                <p className="mt-2 text-lg font-bold leading-tight text-on-surface md:text-xl">{displayLocation}</p>
               </div>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-5 space-y-3">
               <button
                 onClick={() => openConversation()}
                 disabled={isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-full action-gradient px-5 py-3.5 text-base font-bold text-white shadow-md transition-all hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-75 md:text-lg"
+                className="flex w-full items-center justify-center gap-2 rounded-full action-gradient px-5 py-3 text-base font-bold text-white shadow-md transition-all hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-75"
               >
                 {isPending ? (
                   <>
@@ -497,7 +498,7 @@ export function ProductInteraction({
               <button
                 onClick={() => openConversation("offer")}
                 disabled={isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-primary bg-white px-5 py-3.5 text-base font-bold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-70 md:text-lg"
+                className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-primary bg-white px-5 py-3 text-base font-bold text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <ArrowRight size={18} />
                 Make an Offer
@@ -518,8 +519,8 @@ export function ProductInteraction({
             ) : null}
 
             <div className="mt-5 border-t border-outline-variant/15 pt-5">
-              <div className="rounded-[1.5rem] border border-outline-variant/15 bg-surface-container-low/30 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">About this item</p>
+              <div className="rounded-[1.25rem] border border-outline-variant/15 bg-surface-container-low/30 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">About this item</p>
                 <div className="mt-3">
                   {renderFormattedDescription(description)}
                 </div>
