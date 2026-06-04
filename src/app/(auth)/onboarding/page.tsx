@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { CAMPUSES } from "@/lib/constants"
 
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const [fullName, setFullName] = useState("")
   const [university, setUniversity] = useState("Aligarh Muslim University (AMU)")
   const [isOpen, setIsOpen] = useState(false)
@@ -26,6 +26,8 @@ export default function OnboardingPage() {
   const [success, setSuccess] = useState(false)
 
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectPath = searchParams?.get("next") || "/"
   const supabase = createClient()
 
   // Fetch current user on mount
@@ -34,10 +36,15 @@ export default function OnboardingPage() {
       const { data: { user }, error } = await supabase.auth.getUser()
       if (error || !user) {
         router.push("/login")
+        return
+      }
+      
+      if (user.user_metadata?.full_name && !fullName) {
+        setFullName(user.user_metadata.full_name)
       }
     }
     getUser()
-  }, [router, supabase])
+  }, [router, supabase, fullName])
 
   const filteredUniversities = useMemo(() => {
     const query = university.toLowerCase().trim()
@@ -102,7 +109,7 @@ export default function OnboardingPage() {
 
       setSuccess(true)
       setTimeout(() => {
-        router.push("/")
+        router.push(redirectPath)
         router.refresh()
       }, 1500)
     } catch (err: any) {
@@ -304,5 +311,17 @@ export default function OnboardingPage() {
         </form>
       </div>
     </AuthLayout>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center p-4 bg-radial from-background via-surface-container-low to-surface-dim">
+        <div className="size-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    }>
+      <OnboardingForm />
+    </Suspense>
   )
 }

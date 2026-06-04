@@ -77,7 +77,9 @@ export async function proxy(request: NextRequest) {
 
     if (!profile || !profile.full_name || !profile.phone_verified) {
       const url = request.nextUrl.clone()
+      const nextParam = request.nextUrl.pathname + request.nextUrl.search
       url.pathname = '/onboarding'
+      url.searchParams.set('next', nextParam)
       return NextResponse.redirect(url)
     }
   }
