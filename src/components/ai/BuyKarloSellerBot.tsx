@@ -334,6 +334,7 @@ export function BuyKarloSellerBot() {
       category: categoryOverride || draft.category,
       condition: conditionOverride || draft.condition,
       price: priceOverride || draft.price || (draft.suggestedPrice?.min ? String(draft.suggestedPrice.min) : undefined),
+      tags: draft.tags,
     }
 
     window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(cleaned))

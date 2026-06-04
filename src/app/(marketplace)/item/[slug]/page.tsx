@@ -231,6 +231,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
         slug={listing.slug}
         imageUrls={listing.imageUrls}
         videoUrl={listing.videoUrl}
+        videoFit={listing.videoFit}
+        videoAspectRatio={listing.videoAspectRatio}
         title={listing.title}
         campus={listing.campus}
         categorySlug={listing.categorySlug}

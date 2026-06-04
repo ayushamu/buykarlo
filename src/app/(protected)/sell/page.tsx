@@ -10,6 +10,7 @@ import { DRAFT_EVENT_NAME, DRAFT_STORAGE_KEY } from "@/components/ai/BuyKarloSel
 import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/image"
 import { ImageCropperModal } from "@/components/listing/ImageCropperModal"
+import { CustomVideoPlayer } from "@/components/shared/CustomVideoPlayer"
 
 const CATEGORIES = [
   { slug: "electronics", name: "Electronics" },
@@ -67,6 +68,8 @@ function SellPageInner() {
   const [activeCropIndex, setActiveCropIndex] = useState<number | null>(null)
   const [isCropOpen, setIsCropOpen] = useState(false)
   const [video, setVideo] = useState<VideoUploadState | null>(null)
+  const [videoFit, setVideoFit] = useState<"cover" | "contain">("cover")
+  const [videoAspectRatio, setVideoAspectRatio] = useState<"4/3" | "16/9" | "1/1" | "9/16">("4/3")
   const [submitting, setSubmitting] = useState(false)
   const [loadingListing, setLoadingListing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -127,6 +130,8 @@ function SellPageInner() {
               status: "success",
               publicUrl: l.videoUrl,
             })
+            if (l.videoFit) setVideoFit(l.videoFit as any)
+            if (l.videoAspectRatio) setVideoAspectRatio(l.videoAspectRatio as any)
           }
         }
       } catch (err) {
@@ -150,10 +155,23 @@ function SellPageInner() {
       const nextCondition = typeof draft.condition === "string" ? draft.condition.trim() : ""
       const nextPrice = typeof draft.price === "string" ? draft.price.replace(/[^\d.]/g, "") : ""
 
+      let nextKeywords = ""
+      if (Array.isArray(draft.tags)) {
+        nextKeywords = draft.tags.filter((t): t is string => typeof t === "string").map((t) => t.trim()).join(", ")
+      } else if (typeof draft.tags === "string") {
+        nextKeywords = draft.tags.trim()
+      } else if (typeof draft.keywords === "string") {
+        nextKeywords = draft.keywords.trim()
+      }
+
       if (nextTitle) setTitle(nextTitle)
       if (nextCategory && CATEGORIES.some((item) => item.slug === nextCategory)) setCategory(nextCategory)
       if (nextCondition && CONDITIONS.some((item) => item.value === nextCondition)) setCondition(nextCondition)
       if (nextPrice) setPrice(nextPrice)
+      if (nextKeywords) {
+        setKeywords(nextKeywords)
+        setDetailsOpen(true)
+      }
       if (nextDescription) {
         setDescription(nextDescription)
         setDescriptionAiNote("Applied from BuyKarlo AI Seller Bot. Review it before posting.")
@@ -401,6 +419,8 @@ function SellPageInner() {
           keywords: keywords || undefined,
           imageUrls: uploadedUrls,
           videoUrl: uploadedVideoUrl || undefined,
+          videoFit: uploadedVideoUrl ? videoFit : undefined,
+          videoAspectRatio: uploadedVideoUrl ? videoAspectRatio : undefined,
         })
 
         if (result.error) {
@@ -420,6 +440,8 @@ function SellPageInner() {
           keywords: keywords || undefined,
           imageUrls: uploadedUrls,
           videoUrl: uploadedVideoUrl || undefined,
+          videoFit: uploadedVideoUrl ? videoFit : undefined,
+          videoAspectRatio: uploadedVideoUrl ? videoAspectRatio : undefined,
         })
 
         if (result.error) {
@@ -485,108 +507,160 @@ function SellPageInner() {
               </div>
             </div>
 
-            <div className="grid gap-4 p-5 md:p-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {images.map((image, index) => (
-                  <div key={image.previewUrl} className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] transition-all duration-300">
-                    <img src={image.previewUrl} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
-                    {image.status === "uploading" ? (
-                      <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white">
-                        Uploading {image.uploadProgress}%
-                      </div>
-                    ) : null}
-                    {image.status === "success" ? (
-                      <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white">
-                        <Check size={16} />
-                      </div>
-                    ) : null}
-                    
-                    {/* Visual indicator for main cover photo */}
-                    {index === 0 ? (
-                      <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-[var(--seller-primary)] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
-                        <Pin size={10} className="rotate-45 fill-white" />
-                        Main Photo
-                      </div>
-                    ) : null}
+            <div className="grid gap-6 p-5 md:p-6 lg:grid-cols-[1.2fr_0.8fr]">
+              {/* Left Column: Photos */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--seller-primary-strong)]">Product Photos ({images.length}/5)</span>
+                  <span className="text-[10px] text-[var(--seller-text-soft)]">First image is listing cover.</span>
+                </div>
+                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+                  {images.map((image, index) => (
+                    <div key={image.previewUrl} className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] transition-all duration-300">
+                      <img src={image.previewUrl} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
+                      {image.status === "uploading" ? (
+                        <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white">
+                          Uploading {image.uploadProgress}%
+                        </div>
+                      ) : null}
+                      {image.status === "success" ? (
+                        <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white">
+                          <Check size={16} />
+                        </div>
+                      ) : null}
+                      
+                      {/* Visual indicator for main cover photo */}
+                      {index === 0 ? (
+                        <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-[var(--seller-primary)] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+                          <Pin size={10} className="rotate-45 fill-white" />
+                          Main Photo
+                        </div>
+                      ) : null}
 
-                    {!submitting ? (
-                      <div className="absolute bottom-3 right-3 flex gap-2">
-                        {index > 0 ? (
+                      {!submitting ? (
+                        <div className="absolute bottom-3 right-3 flex gap-2">
+                          {index > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => pinImage(index)}
+                              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                              title="Make Main Photo"
+                            >
+                              <Pin size={16} />
+                            </button>
+                          ) : null}
                           <button
                             type="button"
-                            onClick={() => pinImage(index)}
+                            onClick={() => {
+                              setActiveCropIndex(index)
+                              setIsCropOpen(true)
+                            }}
                             className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                            title="Make Main Photo"
+                            title="Crop Image"
                           >
-                            <Pin size={16} />
+                            <Crop size={16} />
                           </button>
-                        ) : null}
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                            title="Remove Image"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+
+                  {images.length < 5 ? (
+                    <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border-2 border-dashed border-[var(--seller-border)] bg-[var(--seller-surface)] text-center text-[var(--seller-primary-strong)] transition-colors hover:border-[var(--seller-primary)]">
+                      <ImagePlus size={28} />
+                      <div>
+                        <p className="font-semibold text-sm">Add Photo</p>
+                        <p className="text-[10px] text-[var(--seller-text-soft)]">Up to 5 images</p>
+                      </div>
+                      <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
+                    </label>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Right Column: Video */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--seller-primary-strong)]">Product Video (Optional)</span>
+                  <span className="text-[10px] text-[var(--seller-text-soft)]">Max 15MB (.mp4/.mov)</span>
+                </div>
+                {video ? (
+                  <div className="w-full space-y-3">
+                    <div className="relative aspect-[4/3] w-full rounded-[1.5rem] border border-[var(--seller-border)] overflow-hidden bg-black">
+                      <CustomVideoPlayer
+                        src={video.previewUrl}
+                        fit={videoFit}
+                        aspectRatio={videoAspectRatio}
+                        useAspectRatio={false}
+                        autoPlay={false}
+                        loop={true}
+                        muted={true}
+                        playsInline={true}
+                        className="absolute inset-0 h-full w-full rounded-none border-0 shadow-none"
+                        onFitChange={(nextFit) => setVideoFit(nextFit)}
+                      />
+                      {video.status === "uploading" ? (
+                        <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white z-30">
+                          Uploading video {video.uploadProgress}%
+                        </div>
+                      ) : null}
+                      {video.status === "success" ? (
+                        <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white z-30">
+                          <Check size={16} />
+                        </div>
+                      ) : null}
+                      {!submitting ? (
                         <button
                           type="button"
                           onClick={() => {
-                            setActiveCropIndex(index)
-                            setIsCropOpen(true)
+                            if (video.previewUrl.startsWith("blob:")) URL.revokeObjectURL(video.previewUrl)
+                            setVideo(null)
                           }}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                          title="Crop Image"
-                        >
-                          <Crop size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                          title="Remove Image"
+                          className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors z-30"
+                          title="Remove Video"
                         >
                           <Trash2 size={16} />
                         </button>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                      ) : null}
+                    </div> {/* Closes aspect-4/3 video box */}
 
-                {images.length < 5 ? (
-                  <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border-2 border-dashed border-[var(--seller-border)] bg-[var(--seller-surface)] text-center text-[var(--seller-primary-strong)] transition-colors hover:border-[var(--seller-primary)]">
-                    <ImagePlus size={28} />
-                    <div>
-                      <p className="font-semibold">Add Photo</p>
-                      <p className="text-xs text-[var(--seller-text-soft)]">Up to 5 images</p>
-                    </div>
-                    <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
-                  </label>
-                ) : null}
-
-                {video ? (
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]">
-                    <video src={video.previewUrl} className="h-full w-full object-cover" />
-                    {video.status === "uploading" ? (
-                      <div className="absolute inset-x-4 bottom-4 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold text-white">
-                        Uploading video {video.uploadProgress}%
-                      </div>
-                    ) : null}
-                    {video.status === "success" ? (
-                      <div className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--seller-primary)] text-white">
-                        <Check size={16} />
-                      </div>
-                    ) : null}
-                    {!submitting ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (video.previewUrl.startsWith("blob:")) URL.revokeObjectURL(video.previewUrl)
-                          setVideo(null)
-                        }}
-                        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                        title="Remove Video"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    ) : null}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white">
-                        <svg className="h-6 w-6 fill-current text-white ml-0.5" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
+                    {/* Segmented Controls for Video Fit Style */}
+                    <div className="mt-3 space-y-3 rounded-2xl border border-[var(--seller-border)] bg-[var(--seller-surface)] p-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex flex-col text-left">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[var(--seller-primary-strong)]">Video Fitting Mode</span>
+                          <span className="text-[10px] text-[var(--seller-text-soft)]">Choose how your video fits inside the container.</span>
+                        </div>
+                        <div className="flex rounded-lg border border-[var(--seller-border)] bg-white p-0.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setVideoFit("cover")}
+                            className={cn(
+                              "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                              videoFit === "cover" ? "bg-[var(--seller-primary)] text-white shadow-sm" : "text-on-surface hover:bg-slate-100"
+                            )}
+                          >
+                            Fill Frame
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setVideoFit("contain")}
+                            className={cn(
+                              "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                              videoFit === "contain" ? "bg-[var(--seller-primary)] text-white shadow-sm" : "text-on-surface hover:bg-slate-100"
+                            )}
+                          >
+                            Fit Inside
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -594,14 +668,13 @@ function SellPageInner() {
                   <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border-2 border-dashed border-[var(--seller-border)] bg-[var(--seller-surface)] text-center text-secondary transition-colors hover:border-[var(--seller-primary)]">
                     <ImagePlus size={28} className="text-secondary" />
                     <div>
-                      <p className="font-semibold text-secondary">Add Video</p>
-                      <p className="text-xs text-[var(--seller-text-soft)]">Max 15MB (.mp4/.mov)</p>
+                      <p className="font-semibold text-secondary text-sm">Add Video</p>
+                      <p className="text-[10px] text-[var(--seller-text-soft)]">Max 15MB (.mp4/.mov)</p>
                     </div>
                     <input type="file" accept="video/mp4,video/quicktime,video/webm" onChange={handleVideoChange} className="hidden" />
                   </label>
                 )}
               </div>
-
             </div>
           </div>
 

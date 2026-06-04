@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react"
 import Image from "next/image"
+import { CustomVideoPlayer } from "@/components/shared/CustomVideoPlayer"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight,
@@ -113,6 +114,8 @@ interface ProductInteractionProps {
   slug: string
   imageUrls: string[]
   videoUrl?: string | null
+  videoFit?: "cover" | "contain" | null
+  videoAspectRatio?: "4/3" | "16/9" | "1/1" | "9/16" | null
   title: string
   campus: string
   categorySlug: string
@@ -131,6 +134,8 @@ export function ProductInteraction({
   slug,
   imageUrls,
   videoUrl,
+  videoFit,
+  videoAspectRatio,
   title,
   campus,
   categorySlug,
@@ -346,17 +351,17 @@ export function ProductInteraction({
 
             {activeMedia ? (
               activeMedia.type === "video" ? (
-                <div className="relative aspect-[4/3] w-full min-w-0 overflow-hidden bg-black">
-                  <video
+                <div className="relative aspect-[4/3] w-full min-w-0 overflow-hidden bg-black rounded-[1.35rem] md:rounded-[1.75rem]">
+                  <CustomVideoPlayer
                     src={activeMedia.url}
-                    controls
-                    controlsList="nodownload nofullscreen noremoteplayback"
-                    disablePictureInPicture
-                    autoPlay
-                    muted
-                    playsInline
-                    loop
-                    className="h-full w-full object-cover"
+                    fit={(videoFit as any) || "cover"}
+                    aspectRatio={(videoAspectRatio as any) || "4/3"}
+                    useAspectRatio={false}
+                    autoPlay={true}
+                    muted={true}
+                    loop={true}
+                    playsInline={true}
+                    className="absolute inset-0 h-full w-full rounded-none border-0 shadow-none"
                   />
                 </div>
               ) : (

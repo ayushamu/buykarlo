@@ -28,6 +28,8 @@ interface CreateListingInput {
   department?: string
   keywords?: string
   videoUrl?: string
+  videoFit?: string
+  videoAspectRatio?: string
   imageUrls: string[]
 }
 
@@ -92,6 +94,8 @@ export async function createListing(input: CreateListingInput) {
           const meta: Record<string, any> = {}
           if (input.department) meta.department = input.department.trim()
           if (input.videoUrl) meta.videoUrl = input.videoUrl.trim()
+          if (input.videoFit) meta.videoFit = input.videoFit.trim()
+          if (input.videoAspectRatio) meta.videoAspectRatio = input.videoAspectRatio.trim()
           if (input.keywords) {
             meta.keywords = input.keywords
               .split(",")
@@ -745,6 +749,8 @@ async function formatSingleListing(l: any, supabase: any) {
     campus: l.campus,
     pickupContext: l.metadata?.department || null,
     videoUrl: l.metadata?.videoUrl || null,
+    videoFit: l.metadata?.videoFit || "cover",
+    videoAspectRatio: l.metadata?.videoAspectRatio || "4/3",
     status: l.status,
     viewCount: l.view_count || 0,
     createdAt: l.created_at,
@@ -865,6 +871,8 @@ export interface UpdateListingInput {
   department?: string
   keywords?: string
   videoUrl?: string
+  videoFit?: string
+  videoAspectRatio?: string
   imageUrls: string[]
 }
 
@@ -928,6 +936,8 @@ export async function getListingForEdit(id: string) {
         categorySlug,
         imageUrls,
         videoUrl: (listing.metadata as any)?.videoUrl || "",
+        videoFit: (listing.metadata as any)?.videoFit || "cover",
+        videoAspectRatio: (listing.metadata as any)?.videoAspectRatio || "4/3",
       }
     }
   } catch (err) {
@@ -986,6 +996,8 @@ export async function updateListing(input: UpdateListingInput) {
           const meta: Record<string, any> = {}
           if (input.department) meta.department = input.department.trim()
           if (input.videoUrl) meta.videoUrl = input.videoUrl.trim()
+          if (input.videoFit) meta.videoFit = input.videoFit.trim()
+          if (input.videoAspectRatio) meta.videoAspectRatio = input.videoAspectRatio.trim()
           if (input.keywords) {
             meta.keywords = input.keywords
               .split(",")

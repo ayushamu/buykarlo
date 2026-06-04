@@ -205,7 +205,7 @@ Rules:
     ].filter(Boolean).join("\n\n")
 
     // Retrieve ReadableStream text output from Gemini API
-    const stream = await createGeminiStream(apiKey, fullPrompt, 600)
+    const stream = await createGeminiStream(apiKey, fullPrompt, 900)
 
     return new Response(stream, {
       headers: {
