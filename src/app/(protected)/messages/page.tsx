@@ -59,13 +59,19 @@ function MessagesContent() {
   const [didApplyDraft, setDidApplyDraft] = useState(false)
 
   // Filter threads
-  const [filterMode, setFilterMode] = useState<"all" | "buying" | "selling">("all")
+  const [filterMode, setFilterMode] = useState<"buying" | "selling">("buying")
+
+  const handleTabChange = (newMode: "buying" | "selling") => {
+    setFilterMode(newMode)
+    setActiveConvId(null)
+    router.push("/messages", { scroll: false })
+  }
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
 
-  // 1. Initial Load of Conversations
+  // 1. Initial Load of Conversations (Run once on mount)
   useEffect(() => {
     async function loadData() {
       setLoadingConvs(true)
@@ -75,37 +81,55 @@ function MessagesContent() {
         if (res.currentUserId) {
           setCurrentUserId(res.currentUserId)
         }
-
-        // Handle routing based on params
-        if (queryConvId) {
-          setActiveConvId(queryConvId)
-        } else if (queryListingId) {
-          // Find existing conversation for listingId
-          const existing = res.conversations.find((c: any) => c.listingId === queryListingId)
-          if (existing) {
-            setActiveConvId(existing.id)
-            router.replace(`/messages?conversationId=${existing.id}`)
-          } else {
-            // Initiate a new conversation
-            const createRes = await getOrCreateConversation(queryListingId)
-            if (createRes.success && createRes.conversationId) {
-              setActiveConvId(createRes.conversationId)
-              const updatedRes = await getConversations()
-              if (updatedRes.success && updatedRes.conversations) {
-                setConversations(updatedRes.conversations)
-              }
-              router.replace(`/messages?conversationId=${createRes.conversationId}`)
-            } else {
-              console.error("Failed to initiate conversation:", createRes.error)
-            }
-          }
-        }
       }
       setLoadingConvs(false)
     }
 
     loadData()
-  }, [queryConvId, queryListingId, router])
+  }, [])
+
+  // 2. Handle routing and params sync once conversations are loaded
+  useEffect(() => {
+    if (loadingConvs || conversations.length === 0) return
+
+    if (queryConvId) {
+      setActiveConvId(queryConvId)
+      const target = conversations.find((c) => c.id === queryConvId)
+      if (target) {
+        setFilterMode(target.isBuyer ? "buying" : "selling")
+      }
+    } else if (queryListingId) {
+      // Find existing conversation for listingId
+      const existing = conversations.find((c) => c.listingId === queryListingId)
+      if (existing) {
+        setActiveConvId(existing.id)
+        setFilterMode(existing.isBuyer ? "buying" : "selling")
+        router.replace(`/messages?conversationId=${existing.id}`)
+      } else {
+        // Initiate a new conversation
+        async function initiateNew() {
+          setLoadingConvs(true)
+          const createRes = await getOrCreateConversation(queryListingId!)
+          if (createRes.success && createRes.conversationId) {
+            setActiveConvId(createRes.conversationId)
+            const updatedRes = await getConversations()
+            if (updatedRes.success && updatedRes.conversations) {
+              setConversations(updatedRes.conversations)
+              const newConv = updatedRes.conversations.find((c: any) => c.id === createRes.conversationId)
+              if (newConv) {
+                setFilterMode(newConv.isBuyer ? "buying" : "selling")
+              }
+            }
+            router.replace(`/messages?conversationId=${createRes.conversationId}`)
+          } else {
+            console.error("Failed to initiate conversation:", createRes.error)
+          }
+          setLoadingConvs(false)
+        }
+        initiateNew()
+      }
+    }
+  }, [queryConvId, queryListingId, conversations, loadingConvs, router])
 
   // Active Conversation Info
   const activeConversation = conversations.find((c) => c.id === activeConvId)
@@ -336,7 +360,6 @@ function MessagesContent() {
 
   // Filter Conversations list based on filterMode
   const filteredConversations = conversations.filter((c) => {
-    if (filterMode === "all") return true
     if (filterMode === "buying") return c.isBuyer
     if (filterMode === "selling") return !c.isBuyer
     return true
@@ -370,36 +393,34 @@ function MessagesContent() {
         <div className="border-b border-outline-variant/20 px-5 py-4 md:p-stack-lg">
           <h2 className="font-display text-[1.65rem] font-extrabold tracking-tight text-on-surface md:text-2xl">Messages</h2>
           <p className="text-xs text-on-surface-variant font-medium mt-1">Grouped by listed items</p>
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none md:mt-stack-md md:gap-stack-sm md:pb-stack-xs">
-            <button
-              onClick={() => setFilterMode("all")}
+          <div className="relative mt-4 flex rounded-full bg-surface-container p-1 border border-outline-variant/10 md:mt-stack-md">
+            {/* Sliding background highlight pill */}
+            <div
               className={cn(
-                "px-stack-md py-1.5 rounded-full font-body text-label-sm font-semibold transition-all whitespace-nowrap cursor-pointer",
-                filterMode === "all"
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-              )}
-            >
-              All Chats
-            </button>
-            <button
-              onClick={() => setFilterMode("buying")}
-              className={cn(
-                "px-stack-md py-1.5 rounded-full font-body text-label-sm font-semibold transition-all whitespace-nowrap cursor-pointer",
+                "absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-out shadow-sm",
                 filterMode === "buying"
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                  ? "translate-x-0 bg-primary"
+                  : "translate-x-full bg-[var(--seller-primary)]"
+              )}
+            />
+            
+            {/* Buying Tab Button */}
+            <button
+              onClick={() => handleTabChange("buying")}
+              className={cn(
+                "relative z-10 flex-1 py-2 text-center text-xs font-bold font-body rounded-full transition-colors cursor-pointer select-none",
+                filterMode === "buying" ? "text-white" : "text-on-surface-variant hover:text-on-surface"
               )}
             >
               Buying
             </button>
+
+            {/* Selling Tab Button */}
             <button
-              onClick={() => setFilterMode("selling")}
+              onClick={() => handleTabChange("selling")}
               className={cn(
-                "px-stack-md py-1.5 rounded-full font-body text-label-sm font-semibold transition-all whitespace-nowrap cursor-pointer",
-                filterMode === "selling"
-                  ? "bg-[var(--seller-primary)] text-white shadow-sm"
-                  : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                "relative z-10 flex-1 py-2 text-center text-xs font-bold font-body rounded-full transition-colors cursor-pointer select-none",
+                filterMode === "selling" ? "text-white" : "text-on-surface-variant hover:text-on-surface"
               )}
             >
               Selling
@@ -438,10 +459,14 @@ function MessagesContent() {
                     router.push(`/messages?conversationId=${conv.id}`, { scroll: false })
                   }}
                   className={cn(
-                    "flex cursor-pointer select-none items-center gap-3 border-l-4 border-transparent p-4 transition-all md:gap-stack-md md:p-stack-md",
+                    "flex cursor-pointer select-none items-center gap-3 border-l-4 p-4 transition-all md:gap-stack-md md:p-stack-md",
                     isActive
-                      ? "bg-primary/10 text-primary border-primary dark:bg-primary-container/20 dark:border-primary-fixed"
-                      : "hover:bg-surface-container-low"
+                      ? conv.isBuyer
+                        ? "bg-primary/10 text-primary border-primary dark:bg-primary-container/20 dark:border-primary-fixed"
+                        : "bg-[var(--seller-surface-strong)] text-[var(--seller-primary-strong)] border-[var(--seller-primary)]"
+                      : conv.isBuyer
+                        ? "border-transparent hover:bg-surface-container-low bg-surface"
+                        : "border-transparent hover:bg-[var(--seller-surface)] bg-surface"
                   )}
                 >
                   {/* User Avatar */}
@@ -453,7 +478,12 @@ function MessagesContent() {
                         className="w-12 h-12 rounded-full object-cover border border-outline-variant/30"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg",
+                        conv.isBuyer
+                          ? "bg-primary/10 text-primary"
+                          : "bg-[var(--seller-chip)] text-[var(--seller-primary-strong)] border border-[var(--seller-border)]"
+                      )}>
                         {other?.fullName?.substring(0, 2).toUpperCase() || "CU"}
                       </div>
                     )}
@@ -477,13 +507,20 @@ function MessagesContent() {
                       <p
                         className={cn(
                           "font-body text-label-sm text-on-surface-variant truncate pr-2 flex-1",
-                          unread > 0 && "font-bold text-primary dark:text-primary-fixed-dim"
+                          unread > 0 && (
+                            conv.isBuyer
+                              ? "font-bold text-primary dark:text-primary-fixed-dim"
+                              : "font-bold text-[var(--seller-primary)]"
+                          )
                         )}
                       >
                         {lastMsg ? parseMessage(lastMsg.content).text : "No messages yet"}
                       </p>
                       {unread > 0 && (
-                        <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                        <span className={cn(
+                          "text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0",
+                          conv.isBuyer ? "bg-primary" : "bg-[var(--seller-primary)]"
+                        )}>
                           {unread}
                         </span>
                       )}
@@ -491,7 +528,12 @@ function MessagesContent() {
 
                     {/* Listing context badge */}
                     {listing && (
-                      <div className="mt-2 flex items-center gap-1.5 bg-surface-container-low border border-outline-variant/20 rounded-lg p-1 w-fit max-w-full">
+                      <div className={cn(
+                        "mt-2 flex items-center gap-1.5 border rounded-lg p-1.5 w-fit max-w-full transition-colors",
+                        conv.isBuyer
+                          ? "bg-surface-container-low border-outline-variant/20 text-on-surface-variant"
+                          : "bg-[var(--seller-chip)] border-[var(--seller-border)] text-[var(--seller-primary-strong)]"
+                      )}>
                         {listing.imageUrl ? (
                           <img
                             src={listing.imageUrl}
@@ -503,11 +545,16 @@ function MessagesContent() {
                             <ImageIcon size={10} className="text-outline" />
                           </div>
                         )}
-                        <span className="font-body text-[11px] font-medium text-on-surface-variant truncate max-w-[140px]">
+                        <span className={cn(
+                          "font-body text-[11px] font-semibold truncate max-w-[140px]",
+                          conv.isBuyer
+                            ? "text-on-surface-variant"
+                            : "text-[var(--seller-primary-strong)]"
+                        )}>
                           {listing.title} • ₹{listing.price}
                         </span>
                         {listing.status === "sold" && (
-                          <span className="bg-emerald-500/10 text-emerald-700 text-[9px] font-bold px-1.5 rounded">
+                          <span className="bg-[var(--seller-surface)] text-[var(--seller-primary)] text-[9px] font-bold px-1.5 rounded border border-[var(--seller-border)]">
                             Sold
                           </span>
                         )}
@@ -575,10 +622,11 @@ function MessagesContent() {
                 {activeListing?.status !== "sold" && !activeConversation.isBuyer && (
                   <button
                     onClick={() => setMarkSoldOpen(true)}
-                    className="hidden sm:flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-full font-body text-label-sm font-semibold transition-all cursor-pointer"
+                    className="flex items-center gap-1 bg-[var(--seller-surface)] hover:bg-[var(--seller-surface-strong)] text-[var(--seller-primary-strong)] border border-[var(--seller-border)] p-2 sm:px-3 sm:py-1.5 rounded-full font-body text-label-sm font-semibold transition-all cursor-pointer"
+                    title="Mark listing as sold"
                   >
                     <CheckCircle size={14} />
-                    Mark Sold
+                    <span className="hidden sm:inline">Mark Sold</span>
                   </button>
                 )}
                 {activeListing && (
@@ -636,7 +684,7 @@ function MessagesContent() {
                         ₹{activeListing.price}
                       </p>
                       {activeListing.status === "sold" && (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">
+                        <span className="rounded-full bg-[var(--seller-chip)] border border-[var(--seller-border)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--seller-primary-strong)]">
                           Sold
                         </span>
                       )}
@@ -681,7 +729,9 @@ function MessagesContent() {
                         className={cn(
                           "p-stack-md shadow-sm border border-outline-variant/10 text-sm font-body leading-relaxed transition-all",
                           isOutgoing
-                            ? "action-gradient text-white message-bubble-out"
+                            ? activeConversation && !activeConversation.isBuyer
+                              ? "bg-gradient-to-br from-[var(--seller-primary)] to-[var(--seller-primary-strong)] text-white message-bubble-out"
+                              : "action-gradient text-white message-bubble-out"
                             : "bg-surface text-on-surface message-bubble-in",
                           msg.sending && "opacity-60",
                           msg.error && "bg-error/10 border-error text-error"
@@ -721,7 +771,12 @@ function MessagesContent() {
                                 <AlertTriangle size={10} /> Failed
                               </span>
                             ) : msg.is_read ? (
-                              <span className="text-primary font-bold">read</span>
+                              <span className={cn(
+                                "font-bold",
+                                activeConversation && !activeConversation.isBuyer
+                                  ? "text-[var(--seller-primary)]"
+                                  : "text-primary"
+                              )}>read</span>
                             ) : (
                               <span>sent</span>
                             )}
@@ -744,7 +799,12 @@ function MessagesContent() {
                   <button
                     key={reply}
                     onClick={() => handleSend(reply)}
-                    className="px-3.5 py-1.5 bg-surface-container hover:bg-surface-container-high hover:text-primary active:scale-95 text-on-surface-variant font-body text-xs font-semibold rounded-full border border-outline-variant/10 whitespace-nowrap cursor-pointer transition-all"
+                    className={cn(
+                      "px-3.5 py-1.5 bg-surface-container active:scale-95 text-on-surface-variant font-body text-xs font-semibold rounded-full border border-outline-variant/10 whitespace-nowrap cursor-pointer transition-all",
+                      activeConversation && !activeConversation.isBuyer
+                        ? "hover:bg-[var(--seller-surface)] hover:text-[var(--seller-primary-strong)] hover:border-[var(--seller-border)]"
+                        : "hover:bg-surface-container-high hover:text-primary"
+                    )}
                   >
                     {reply}
                   </button>
@@ -787,8 +847,18 @@ function MessagesContent() {
                             className="w-full h-full object-cover"
                           />
                           {isSelected && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                              <div className="w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
+                            <div className={cn(
+                              "absolute inset-0 flex items-center justify-center",
+                              activeConversation && !activeConversation.isBuyer
+                                ? "bg-[var(--seller-surface)]/40"
+                                : "bg-primary/20"
+                            )}>
+                              <div className={cn(
+                                "w-5 h-5 text-white rounded-full flex items-center justify-center",
+                                activeConversation && !activeConversation.isBuyer
+                                  ? "bg-[var(--seller-primary)]"
+                                  : "bg-primary"
+                              )}>
                                 <Check size={12} strokeWidth={3} />
                               </div>
                             </div>
@@ -802,14 +872,24 @@ function MessagesContent() {
 
               {/* Active Image Attachment Preview indicator */}
               {selectedImageRef && (
-                <div className="mb-stack-sm flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl p-2 w-fit">
+                <div className={cn(
+                  "mb-stack-sm flex items-center gap-2 border rounded-xl p-2 w-fit",
+                  activeConversation && !activeConversation.isBuyer
+                    ? "bg-[var(--seller-surface)] border-[var(--seller-border)]"
+                    : "bg-primary/5 border-primary/20"
+                )}>
                   <img
                     src={selectedImageRef}
                     alt="Ref Attachment Preview"
                     className="w-10 h-10 object-cover rounded"
                   />
                   <div className="pr-2 select-none">
-                    <p className="font-body text-xs font-bold text-primary">Referencing Listing Photo</p>
+                    <p className={cn(
+                      "font-body text-xs font-bold",
+                      activeConversation && !activeConversation.isBuyer
+                        ? "text-[var(--seller-primary-strong)]"
+                        : "text-primary"
+                    )}>Referencing Listing Photo</p>
                     <p className="font-body text-[10px] text-on-surface-variant">Image will be attached to message</p>
                   </div>
                   <button
@@ -822,7 +902,12 @@ function MessagesContent() {
               )}
 
               {/* Input container row */}
-              <div className="flex min-w-0 items-end gap-2 rounded-[24px] border border-outline-variant/30 bg-surface-container-low p-2 pr-3 transition-all focus-within:ring-2 focus-within:ring-primary/20 md:gap-stack-md md:pr-4">
+              <div className={cn(
+                "flex min-w-0 items-end gap-2 rounded-[24px] border border-outline-variant/30 bg-surface-container-low p-2 pr-3 transition-all md:gap-stack-md md:pr-4",
+                activeConversation && !activeConversation.isBuyer
+                  ? "focus-within:ring-2 focus-within:ring-[var(--seller-primary)]/20"
+                  : "focus-within:ring-2 focus-within:ring-primary/20"
+              )}>
                 <div className="mb-1 flex shrink-0 items-center">
                   <button
                     onClick={() => setImagePickerOpen(!imagePickerOpen)}
@@ -830,7 +915,9 @@ function MessagesContent() {
                     className={cn(
                       "p-2 rounded-full cursor-pointer transition-colors",
                       imagePickerOpen || selectedImageRef
-                        ? "bg-primary/10 text-primary"
+                        ? activeConversation && !activeConversation.isBuyer
+                          ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)]"
+                          : "bg-primary/10 text-primary"
                         : "text-on-surface-variant hover:bg-surface-container"
                     )}
                   >
@@ -864,7 +951,12 @@ function MessagesContent() {
                 />
                 <button
                   onClick={() => handleSend()}
-                  className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/10 transition-all hover:scale-105 hover:bg-primary-container active:scale-95 cursor-pointer"
+                  className={cn(
+                    "mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer",
+                    activeConversation && !activeConversation.isBuyer
+                      ? "bg-[var(--seller-primary)] hover:bg-[var(--seller-primary-strong)] shadow-[var(--seller-primary)]/10"
+                      : "bg-primary hover:bg-primary-container shadow-primary/10"
+                  )}
                   aria-label="Send message"
                 >
                   <Send size={15} />

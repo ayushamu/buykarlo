@@ -347,3 +347,285 @@ export async function sendReviewReminderEmail(
     return { success: false, error: error.message || error }
   }
 }
+
+/**
+ * Sends an email notification when a user receives a chat message on BuyKarlo.
+ */
+export async function sendChatEmailNotification({
+  toEmail,
+  senderName,
+  senderAvatarUrl,
+  listingTitle,
+  listingPrice,
+  messageContent,
+  conversationId,
+}: {
+  toEmail: string;
+  senderName: string;
+  senderAvatarUrl?: string;
+  listingTitle: string;
+  listingPrice?: string;
+  messageContent: string;
+  conversationId: string;
+}) {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.warn("RESEND_API_KEY is not defined. Skipping chat email notification.")
+      return { success: false, error: "API key missing" }
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.buykarlo.in"
+    const chatUrl = `${siteUrl}/messages?conversationId=${conversationId}`
+
+    const truncatedMessage = messageContent.length > 150
+      ? `${messageContent.substring(0, 147)}...`
+      : messageContent;
+
+    // Use UI-Avatars as fallback if user has no avatar
+    const avatarUrl = senderAvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=1C16CF&color=fff&rounded=true&bold=true`;
+    const studentHandle = `${senderName.replace(/\s+/g, '_').toLowerCase()}`;
+
+    const emailSubject = `New message from ${senderName} on BuyKarlo 💬`
+    const emailBody = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Message on BuyKarlo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0B0F19;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #0B0F19;
+      padding: 16px 12px;
+      box-sizing: border-box;
+    }
+    .container {
+      max-width: 580px;
+      margin: 0 auto;
+      background-color: #111827;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .header {
+      padding: 12px 24px 0 24px;
+      display: table;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .logo-container {
+      display: table-cell;
+      vertical-align: middle;
+    }
+    .logo-text {
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-decoration: none;
+      margin: 0;
+    }
+    .user-tag-container {
+      display: table-cell;
+      text-align: right;
+      vertical-align: middle;
+    }
+    .user-tag {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .content {
+      padding: 12px 24px 24px 24px;
+    }
+    .avatar-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid #1C16CF;
+      display: block;
+      margin: 0 auto 16px auto;
+    }
+    .notification-line {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+    .notification-line a {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .context-card {
+      background-color: #1e293b;
+      border-left: 4px solid #1C16CF;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    .context-label {
+      font-size: 11px;
+      font-weight: bold;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .context-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }
+    .context-price {
+      font-size: 13px;
+      color: #a855f7;
+      font-weight: 600;
+      margin-top: 4px;
+      margin-bottom: 0;
+    }
+    .separator {
+      border: 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin: 20px 0;
+    }
+    .message-container {
+      margin-bottom: 28px;
+      text-align: left;
+    }
+    .message-author {
+      font-size: 13px;
+      font-weight: bold;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .message-bubble {
+      background-color: #1f2937;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-top: 6px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .message-body {
+      font-size: 15px;
+      color: #ffffff;
+      line-height: 1.5;
+      margin: 0;
+      font-weight: 500;
+    }
+    .button-container {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #1C16CF 0%, #6B38D4 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 12px 36px;
+      border-radius: 9999px;
+      box-shadow: 0 4px 15px rgba(28, 22, 207, 0.4);
+    }
+    .footer {
+      padding: 32px;
+      text-align: center;
+      background-color: #0b0f19;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .footer-text {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .footer-link {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="logo-container">
+          <div class="logo-text"><a href="${siteUrl}">
+  <img src="https://res.cloudinary.com/dqariamo7/image/upload/v1780594833/22577176-a49c-49a3-a7ae-5ada9284b795.png" width="80" height="64" alt="Company Logo Home Button">
+</a></div>
+        </div>
+        <div class="user-tag-container">
+          <div class="user-tag">student_inbox</div>
+        </div>
+      </div>
+      <div class="content">
+        <img src="${avatarUrl}" class="avatar-image" alt="${senderName}" />
+        
+        <div class="notification-line">
+          <a href="${chatUrl}">${senderName}</a> sent you a new message &middot; Just now
+        </div>
+        
+        <div class="context-card">
+          <div class="context-label">Conversation Item</div>
+          <h4 class="context-title">${listingTitle}</h4>
+          ${listingPrice ? `<p class="context-price">${listingPrice}</p>` : ""}
+        </div>
+        
+        <hr class="separator" />
+        
+        <div class="message-container">
+          <div class="message-author">student/${studentHandle}</div>
+          <div class="message-bubble">
+            <p class="message-body">"${truncatedMessage}"</p>
+          </div>
+        </div>
+        
+        <div class="button-container">
+          <a href="${chatUrl}" class="btn" style="color: #ffffff !important; text-decoration: none;">Reply in Chat</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p class="footer-text">
+         © 2026 BuyKarlo · Verified Student-only P2P Marketplace<br>
+          If you don't want to receive these emails, you can update your notification settings in your profile.<br>
+          <a href="${siteUrl}" class="footer-link">Visit BuyKarlo</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`
+
+    const data = await resend.emails.send({
+      from: `BuyKarlo <${SENDER_EMAIL}>`,
+      to: toEmail,
+      replyTo: "buykarlo.official@gmail.com",
+      subject: emailSubject,
+      html: emailBody,
+    })
+
+    console.log(`Chat email notification sent to ${toEmail}:`, data)
+    return { success: true, data }
+  } catch (error: any) {
+    console.error(`Failed to send chat email notification to ${toEmail}:`, error)
+    return { success: false, error: error.message || error }
+  }
+}

@@ -1,17 +1,29 @@
 import { AppHeader } from "@/components/layouts/AppHeader"
 import { MobileNav } from "@/components/layouts/MobileNav"
+import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { Suspense } from "react"
 
-export default function MarketplaceLayout({
+export default async function MarketplaceLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("full_name, avatar_url, university")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null }
+
   return (
     <div className="flex min-h-screen flex-col pb-24 md:pb-0">
       <Suspense fallback={<div className="h-[136px] lg:h-20 w-full border-b border-outline-variant/30 bg-surface" />}>
-        <AppHeader />
+        <AppHeader profile={user ? profile ?? {} : null} />
       </Suspense>
       <main className="w-full min-w-0 flex-1 overflow-x-hidden">
         {children}

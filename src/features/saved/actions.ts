@@ -16,7 +16,7 @@ export async function toggleSaveListing(listingId: string) {
     // 2. Check if already saved
     const { data: existing, error: findError } = await supabase
       .from("saved_listings")
-      .select("id")
+      .select("listing_id")
       .eq("user_id", user.id)
       .eq("listing_id", listingId)
       .maybeSingle()
@@ -33,7 +33,8 @@ export async function toggleSaveListing(listingId: string) {
       const { error: deleteError } = await supabase
         .from("saved_listings")
         .delete()
-        .eq("id", existing.id)
+        .eq("user_id", user.id)
+        .eq("listing_id", listingId)
 
       if (deleteError) {
         console.error("Error deleting saved listing:", deleteError)
@@ -80,7 +81,7 @@ export async function getSavedListings() {
     const { data, error } = await supabase
       .from("saved_listings")
       .select(`
-        id,
+        listing_id,
         listing:listings(
           id,
           slug,

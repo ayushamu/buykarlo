@@ -249,8 +249,9 @@ export async function sendMessage(conversationId: string, content: string) {
       .select(`
         buyer_id, 
         seller_id,
-        buyer:profiles!conversations_buyer_id_fkey(full_name),
-        seller:profiles!conversations_seller_id_fkey(full_name)
+        listing:listings(title, price),
+        buyer:profiles!conversations_buyer_id_fkey(full_name, email, avatar_url),
+        seller:profiles!conversations_seller_id_fkey(full_name, email, avatar_url)
       `)
       .eq("id", conversationId)
       .maybeSingle()
@@ -285,10 +286,20 @@ export async function sendMessage(conversationId: string, content: string) {
     const isBuyer = conv.buyer_id === user.id
     const senderName = isBuyer ? (rawBuyer?.full_name || "Campus User") : (rawSeller?.full_name || "Campus User")
     const receiverId = isBuyer ? conv.seller_id : conv.buyer_id
+    const receiverEmail = isBuyer ? rawSeller?.email : rawBuyer?.email
+    const senderAvatarUrl = isBuyer ? rawBuyer?.avatar_url : rawSeller?.avatar_url
+    
+    const listing = Array.isArray(conv.listing) ? conv.listing[0] : conv.listing
+    const listingTitle = listing?.title || "Marketplace Item"
+    const listingPrice = listing?.price ? `₹${Number(listing.price)}` : undefined
 
     sendChatNotifications({
       receiverId,
+      receiverEmail,
       senderName,
+      senderAvatarUrl,
+      listingTitle,
+      listingPrice,
       messageContent: content.trim(),
       conversationId
     }).catch((err) => {

@@ -26,7 +26,7 @@ export default async function ProtectedLayout({
   return (
     <div className="flex min-h-screen flex-col bg-surface pb-24 md:pb-0">
       <Suspense fallback={<div className="h-20 w-full border-b border-outline-variant/30 bg-surface" />}>
-        <AppHeader profile={profile} />
+        <AppHeader profile={profile ?? {}} />
       </Suspense>
       <main className="mx-auto flex-1 w-full max-w-container-max px-4 py-6 md:px-margin-desktop md:py-8">
         {children}

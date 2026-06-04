@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useSearchParams, useRouter } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   Bell,
   ChevronDown,
+  Heart,
   LayoutDashboard,
+  LogIn,
   MapPin,
   MessageSquare,
   Package,
   Search,
   ShieldCheck,
-  ShoppingCart,
   ShoppingBag,
   User,
   Check
@@ -59,7 +60,6 @@ function getInitials(name?: string | null) {
 export function AppHeader({ profile }: AppHeaderProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const router = useRouter()
   const marketplaceMode = searchParams.get("mode") === "sell" ? "sell" : "buy"
 
   const [selectedCampus, setSelectedCampus] = useState("Aligarh Muslim University (AMU)")
@@ -108,6 +108,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
     pathname.startsWith("/dashboard") || pathname.startsWith("/sell") || (pathname === "/" && marketplaceMode === "sell")
   const isProductDetail = pathname.startsWith("/item/")
   const isMessagesPage = pathname === "/messages"
+  const isLoggedIn = Boolean(profile)
 
   const sellerTitle =
     pathname === "/sell"
@@ -320,14 +321,17 @@ export function AppHeader({ profile }: AppHeaderProps) {
             <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-gradient-to-tr from-primary to-secondary animate-pulse ring-2 ring-white" />
           </Link>
           <Link
-            href="/cart"
+            href={isLoggedIn ? "/cart" : "/login"}
             className={cn(
-              "hidden sm:inline-flex rounded-full p-2.5 text-on-surface-variant transition-all duration-200 hover:bg-surface-container hover:text-primary hover:scale-110 active:scale-90",
-              !isProductDetail && "lg:hidden"
+              "hidden sm:inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-extrabold shadow-sm transition-all duration-200 hover:scale-105 active:scale-95",
+              isLoggedIn
+                ? "border border-outline-variant/30 bg-white text-primary hover:bg-surface-container"
+                : "action-gradient text-white shadow-[0_10px_28px_rgba(28,22,207,0.28)] animate-pulse hover:shadow-[0_14px_34px_rgba(28,22,207,0.36)]"
             )}
-            title="Cart"
+            title={isLoggedIn ? "Wishlist" : "Login"}
           >
-            <ShoppingCart size={20} />
+            {isLoggedIn ? <Heart size={18} /> : <LogIn size={18} />}
+            <span>{isLoggedIn ? "Wishlist" : "Login"}</span>
           </Link>
           <Link
             href="/profile"
@@ -418,16 +422,24 @@ export function AppHeader({ profile }: AppHeaderProps) {
           </div>
 
           <Link
-            href={marketplaceMode === "sell" ? "/dashboard" : "/cart"}
+            href={marketplaceMode === "sell" ? "/dashboard" : isLoggedIn ? "/cart" : "/login"}
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition-all duration-200 hover:scale-105 active:scale-95",
               marketplaceMode === "sell"
                 ? "bg-[var(--seller-primary)] text-white"
-                : "border border-outline-variant/30 bg-white text-primary"
+                : isLoggedIn
+                  ? "border border-outline-variant/30 bg-white text-primary"
+                  : "action-gradient text-white shadow-[0_10px_28px_rgba(28,22,207,0.28)] animate-pulse"
             )}
           >
-            <ShoppingBag size={16} />
-            {marketplaceMode === "sell" ? "Seller Hub" : "Cart"}
+            {marketplaceMode === "sell" ? (
+              <ShoppingBag size={16} />
+            ) : isLoggedIn ? (
+              <Heart size={16} />
+            ) : (
+              <LogIn size={16} />
+            )}
+            {marketplaceMode === "sell" ? "Seller Hub" : isLoggedIn ? "Wishlist" : "Login"}
           </Link>
         </div>
       ) : null}
