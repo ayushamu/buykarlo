@@ -451,3 +451,60 @@ export async function getDealDetailsForReview(dealId: string) {
   }
 }
 
+/**
+ * Fetches buyer reviews for a specific seller.
+ */
+export async function getSellerReviews(sellerId: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: reviews, error } = await supabase
+      .from("reviews")
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        reviewer:reviewer_id (
+          full_name,
+          avatar_url
+        ),
+        deal:deal_id (
+          listing:listing_id (
+            title
+          )
+        )
+      `)
+      .eq("reviewee_id", sellerId)
+      .eq("role", "buyer") // Only show reviews written by buyers about this seller
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching seller reviews:", JSON.stringify(error, null, 2))
+      return { error: "Failed to fetch reviews." }
+    }
+
+    const formattedReviews = reviews?.map((r: any) => {
+      const reviewer = Array.isArray(r.reviewer) ? r.reviewer[0] : r.reviewer
+      const deal = Array.isArray(r.deal) ? r.deal[0] : r.deal
+      const listing = deal?.listing ? (Array.isArray(deal.listing) ? deal.listing[0] : deal.listing) : null
+
+      return {
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.created_at,
+        reviewerName: reviewer?.full_name || "Campus Student",
+        reviewerAvatar: reviewer?.avatar_url || null,
+        listingTitle: listing?.title || null
+      }
+    }) || []
+
+    return { success: true, reviews: formattedReviews }
+  } catch (err: any) {
+    console.error("getSellerReviews exception:", err)
+    return { error: err.message || "An unexpected error occurred." }
+  }
+}
+
+

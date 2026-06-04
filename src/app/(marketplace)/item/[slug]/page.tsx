@@ -8,13 +8,25 @@ import {
   MessageSquare,
   ShieldCheck,
   Star,
+  User,
 } from "lucide-react"
 import { getActiveListings, getListingBySlug, getSavedListingStatus } from "@/features/listings/actions"
+import { getSellerReviews } from "@/features/deals/actions"
 import { ProductInteraction } from "./_components/ProductInteraction"
 import { ReportListingButton } from "./_components/ReportListingButton"
+import { cn } from "@/lib/utils"
 
 interface PageProps {
   params: Promise<{ slug: string }>
+}
+
+const formatDate = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+  } catch {
+    return "Recent Deal"
+  }
 }
 
 function getChecklist(categorySlug: string, condition: string) {
@@ -93,9 +105,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound()
   }
 
-  const [savedState, relatedResult] = await Promise.all([
+  const [savedState, relatedResult, reviewsResult] = await Promise.all([
     getSavedListingStatus(listing.id),
     getActiveListings(listing.categorySlug, listing.campus),
+    listing.seller?.id ? getSellerReviews(listing.seller.id) : Promise.resolve({ reviews: [] }),
   ])
 
   const relatedListings = "listings" in relatedResult ? relatedResult.listings || [] : []
@@ -104,6 +117,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const sellerJoinedYear = listing.seller?.createdAt ? new Date(listing.seller.createdAt).getFullYear() : 2026
   const trustScore = listing.seller?.trustScore || 0
   const trustRating = Math.max(3.5, Math.min(4.9, Number((trustScore / 20).toFixed(1))))
+  const reviews = reviewsResult && "reviews" in reviewsResult ? reviewsResult.reviews || [] : []
+  const avgRating = reviews.length > 0
+    ? Number((reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1))
+    : null
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -132,13 +149,65 @@ export default async function ProductDetailPage({ params }: PageProps) {
           "@type": "Place",
           name: listing.seller.university || "Aligarh Muslim University (AMU)"
         }
-      } : undefined
+      } : undefined,
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: "0.00",
+          currency: "INR"
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "IN"
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 1,
+            unitCode: "DAY"
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 1,
+            unitCode: "DAY"
+          }
+        }
+      },
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "IN",
+        returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted"
+      }
     },
     category: listing.categoryName,
     brand: {
       "@type": "Brand",
       name: "BuyKarlo",
     },
+    review: reviews.length > 0 ? reviews.map((r: any) => ({
+      "@type": "Review",
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: r.rating,
+        bestRating: "5"
+      },
+      author: {
+        "@type": "Person",
+        name: r.reviewerName
+      },
+      reviewBody: r.comment || "Good campus exchange",
+      datePublished: new Date(r.createdAt).toISOString().split("T")[0]
+    })) : undefined,
+    aggregateRating: reviews.length > 0 && avgRating ? {
+      "@type": "AggregateRating",
+      ratingValue: avgRating,
+      reviewCount: reviews.length,
+      bestRating: "5"
+    } : undefined,
   }
 
   return (
@@ -174,19 +243,101 @@ export default async function ProductDetailPage({ params }: PageProps) {
       />
 
       <div className="mt-5 grid min-w-0 gap-4 px-4 md:px-0 xl:grid-cols-[1fr_360px]">
-        <div className="min-w-0 rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_18px_36px_rgba(15,23,42,0.05)] md:p-5">
-          <div className="flex min-w-0 items-start gap-2">
-            <MessageSquare size={17} className="mt-0.5 shrink-0 text-secondary" />
-            <h2 className="min-w-0 break-words text-xs font-bold uppercase tracking-[0.14em] text-primary md:text-sm">What to check before buying</h2>
+        <div className="min-w-0 space-y-4">
+          {/* What to check before buying checklist */}
+          <div className="rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_18px_36px_rgba(15,23,42,0.05)] md:p-5">
+            <div className="flex min-w-0 items-start gap-2">
+              <MessageSquare size={17} className="mt-0.5 shrink-0 text-secondary" />
+              <h2 className="min-w-0 break-words text-xs font-bold uppercase tracking-[0.14em] text-primary md:text-sm">What to check before buying</h2>
+            </div>
+            <ul className="mt-4 space-y-2.5">
+              {checklist.map((item) => (
+                <li key={item} className="flex min-w-0 gap-3 text-sm leading-6 text-on-surface-variant">
+                  <CheckCircle2 size={15} className="mt-1 shrink-0 text-secondary" />
+                  <span className="min-w-0 break-words">{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="mt-4 space-y-2.5">
-            {checklist.map((item) => (
-              <li key={item} className="flex min-w-0 gap-3 text-sm leading-6 text-on-surface-variant">
-                <CheckCircle2 size={15} className="mt-1 shrink-0 text-secondary" />
-                <span className="min-w-0 break-words">{item}</span>
-              </li>
-            ))}
-          </ul>
+
+          {/* Seller Reviews Section */}
+          <div className="rounded-[1.5rem] border border-outline-variant/20 bg-white p-4 shadow-[0_18px_36px_rgba(15,23,42,0.05)] md:p-5">
+            <div className="flex min-w-0 items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <Star size={17} className="shrink-0 text-primary fill-primary/10" />
+                <h2 className="min-w-0 break-words text-xs font-bold uppercase tracking-[0.14em] text-primary md:text-sm">
+                  Seller Reviews {reviews.length > 0 ? `(${reviews.length})` : ""}
+                </h2>
+              </div>
+              {avgRating && (
+                <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
+                  <Star size={14} className="fill-primary text-primary" />
+                  <span>{avgRating} / 5</span>
+                </div>
+              )}
+            </div>
+
+            {reviews.length === 0 ? (
+              <div className="mt-6 text-center py-8 px-4 rounded-2xl bg-[#f8f9ff] border border-dashed border-outline-variant/25">
+                <Star size={24} className="mx-auto text-outline-variant/60 mb-2" />
+                <p className="text-sm font-semibold text-on-surface">No reviews yet</p>
+                <p className="mt-1 text-xs text-on-surface-variant max-w-xs mx-auto">
+                  Deals completed through campus chat build verified student Trust Scores and unlock reviews.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4 divide-y divide-outline-variant/10">
+                {reviews.map((r: any, idx: number) => (
+                  <div key={r.id} className={cn("pt-4 first:pt-0")}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        {r.reviewerAvatar ? (
+                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-outline-variant/20">
+                            <img src={r.reviewerAvatar} alt={r.reviewerName} className="h-full w-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                            {r.reviewerName.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-bold text-on-surface leading-tight">{r.reviewerName}</p>
+                          {r.listingTitle && (
+                            <p className="text-[11px] text-on-surface-variant/80 mt-0.5 leading-none">
+                              Bought: <span className="font-semibold text-on-surface-variant">{r.listingTitle}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              size={12}
+                              className={cn(
+                                i < r.rating
+                                  ? "text-[#f4b400] fill-[#f4b400]"
+                                  : "text-outline-variant/30"
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-on-surface-variant/75 font-medium">
+                          {formatDate(r.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                    {r.comment && (
+                      <p className="mt-2.5 pl-[2.6rem] text-sm leading-relaxed text-on-surface-variant font-medium">
+                        "{r.comment}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {listing.seller ? (

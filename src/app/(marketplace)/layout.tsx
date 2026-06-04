@@ -10,7 +10,7 @@ export default function MarketplaceLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col pb-24 md:pb-0">
-      <Suspense fallback={<div className="h-20 w-full border-b border-outline-variant/30 bg-surface" />}>
+      <Suspense fallback={<div className="h-[136px] lg:h-20 w-full border-b border-outline-variant/30 bg-surface" />}>
         <AppHeader />
       </Suspense>
       <main className="w-full min-w-0 flex-1 overflow-x-hidden">

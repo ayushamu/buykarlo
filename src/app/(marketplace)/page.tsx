@@ -532,23 +532,17 @@ export default function HomePage({ searchParams }: HomePageProps) {
         <section className="relative isolate overflow-hidden bg-white">
           <div className="absolute inset-y-0 right-0 hidden w-[58%] rounded-bl-[4rem] bg-primary/10 lg:block" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(107,56,212,0.12),transparent_30%),linear-gradient(90deg,#ffffff_0%,rgba(255,255,255,0.94)_43%,rgba(255,255,255,0.62)_70%,rgba(255,255,255,0.42)_100%)]" />
-          <motion.div
+          <div
             aria-hidden="true"
             className="absolute left-[8%] top-16 h-44 w-44 rounded-full bg-amber-300/20 blur-3xl"
-            animate={reduceMotion ? undefined : { x: [0, 18, 0], y: [0, -10, 0], scale: [1, 1.08, 1] }}
-            transition={{ duration: 12, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
           />
-          <motion.div
+          <div
             aria-hidden="true"
             className="absolute bottom-24 right-[18%] h-56 w-56 rounded-full bg-orange-400/15 blur-3xl"
-            animate={reduceMotion ? undefined : { x: [0, -16, 0], y: [0, 14, 0], scale: [1, 1.12, 1] }}
-            transition={{ duration: 14, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
           />
-          <motion.div
+          <div
             aria-hidden="true"
             className="absolute right-[4%] top-24 h-64 w-64 rounded-full bg-secondary/15 blur-3xl"
-            animate={reduceMotion ? undefined : { x: [0, -14, 0], y: [0, -18, 0], scale: [1, 1.06, 1] }}
-            transition={{ duration: 16, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
           />
 
           <div className="relative mx-auto grid max-w-container-max gap-8 px-4 pb-6 pt-8 md:gap-10 md:px-margin-desktop md:pt-10 lg:min-h-[720px] lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:pb-0">
@@ -604,11 +598,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
               </motion.div>
             </motion.div>
 
-            <motion.div
+            <div
               className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] bg-primary/10 shadow-[0_30px_70px_rgba(28,22,207,0.14)] lg:min-h-[640px]"
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
             >
               <Image
                 src="/illustrations/buykarlo-campus-trust.webp"
@@ -726,7 +717,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   </div>
                 </div>
               </motion.div>
-            </motion.div>
+            </div>
           </div>
 
           <div className="relative mx-auto max-w-container-max px-4 pb-10 md:px-margin-desktop">
