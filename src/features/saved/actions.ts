@@ -118,7 +118,7 @@ export async function getSavedListings() {
           condition: l.condition,
           imageUrl,
           sellerDepartment,
-          isTrustedSeller: (l.profiles as any)?.email === "buykarlo.official@gmail.com"
+          isTrustedSeller: ["buykarlo.official@gmail.com", "help@buykarlo.in"].includes((l.profiles as any)?.email)
         }
       })
 

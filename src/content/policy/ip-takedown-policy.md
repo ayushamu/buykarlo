@@ -39,7 +39,7 @@ Violation of intellectual property rights may result in enforcement action under
 
 Rights holders or authorized representatives may submit complaints regarding alleged intellectual property infringement.
 Complaints should be sent to:
-**Email:**  help.buykarlo@gmail.com
+**Email:**  help@buykarlo.in
 The complaint should include:
 * Full name of the complainant;
 * Contact information;
@@ -129,5 +129,5 @@ Updated versions shall become effective upon publication on the Platform.
 ## 14. CONTACT INFORMATION
 
 For intellectual property complaints, rights-holder requests, or policy-related inquiries:
-**Email:**  help.buykarlo@gmail.com
+**Email:**  help@buykarlo.in
 **Address:**  Aligarh, Uttar Pradesh, India

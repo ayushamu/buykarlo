@@ -148,5 +148,5 @@ Continued use of the Platform after publication of changes constitutes acknowled
 ## 14. CONTACT INFORMATION
 
 For privacy-related requests, concerns, or complaints:
-Email: help.buykarlo@gmail.com
+Email: help@buykarlo.in
 Address: Aligarh, Uttar Pradesh, India

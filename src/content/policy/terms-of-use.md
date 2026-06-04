@@ -186,5 +186,5 @@ Certain provisions, including indemnity, liability limitations, intellectual pro
 ## 18. CONTACT
 
 For legal notices, complaints, or compliance-related communications:
-Email: help.buykarlo@gmail.com
+Email: help@buykarlo.in
 Address: Aligarh , Uttar Pradesh

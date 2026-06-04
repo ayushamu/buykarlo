@@ -1,7 +1,7 @@
 import { Resend } from "resend"
 
 // Fallback sender address. Must match your verified domain.
-const SENDER_EMAIL = "noreply@buykarlo.in"
+const SENDER_EMAIL = "help@buykarlo.in"
 
 /**
  * Sends a premium styled Welcome Email upon completing onboarding,
@@ -21,157 +21,306 @@ export async function sendWelcomeEmail(toEmail: string, fullName: string) {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Welcome to BuyKarlo 2.0</title>
+        <title>Welcome to BuyKarlo</title>
         <style>
           body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
             margin: 0;
             padding: 0;
-            -webkit-font-smoothing: antialiased;
+            background: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #1e293b;
           }
+
           .container {
-            max-width: 600px;
+            max-width: 620px;
             margin: 40px auto;
             background: #ffffff;
-            border-radius: 24px;
+            border-radius: 28px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(28, 22, 207, 0.05);
             border: 1px solid #e2e8f0;
+            box-shadow: 0 18px 45px rgba(28, 22, 207, 0.08);
           }
+
           .header {
             background: linear-gradient(135deg, #1C16CF 0%, #6B38D4 100%);
-            padding: 35px 20px;
+            padding: 38px 24px;
             text-align: center;
             color: #ffffff;
           }
+
           .header img {
-            max-width: 80px;
-            height: auto;
-            margin-bottom: 12px;
-            display: inline-block;
+            max-width: 78px;
+            margin-bottom: 14px;
           }
+
           .header h1 {
             margin: 0;
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 900;
             letter-spacing: -0.04em;
           }
+
+          .header p {
+            margin: 8px 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 500;
+          }
+
           .content {
-            padding: 40px 30px;
+            padding: 38px 30px;
           }
+
           .greeting {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 12px;
+            font-size: 21px;
+            font-weight: 800;
             color: #0f172a;
+            margin-bottom: 12px;
           }
+
           .intro {
             font-size: 15px;
-            line-height: 1.6;
+            line-height: 1.7;
             color: #64748b;
             margin-bottom: 30px;
           }
-          .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
+
+          .section-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 22px;
           }
-          @media (max-width: 480px) {
-            .grid {
-              grid-template-columns: 1fr;
-            }
-          }
-          .card {
+
+          .flow-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
+            border-radius: 22px;
             padding: 24px;
-            text-align: center;
-            transition: all 0.2s ease;
+            margin-bottom: 22px;
           }
-          .card h3 {
-            margin-top: 0;
-            margin-bottom: 8px;
-            font-size: 16px;
-            font-weight: 700;
+
+          .flow-card.buy {
+            border-top: 5px solid #1C16CF;
+          }
+
+          .flow-card.sell {
+            border-top: 5px solid #6B38D4;
+          }
+
+          .flow-heading {
+            font-size: 18px;
+            font-weight: 900;
+            margin: 0 0 18px;
             color: #0f172a;
           }
-          .card p {
-            font-size: 13px;
-            color: #64748b;
-            line-height: 1.5;
+
+          .step {
+            display: flex;
+            gap: 14px;
             margin-bottom: 16px;
+            align-items: flex-start;
           }
+
+          .step:last-child {
+            margin-bottom: 0;
+          }
+
+          .icon {
+            min-width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+          }
+
+          .step-content h3 {
+            margin: 0 0 4px;
+            font-size: 15px;
+            color: #0f172a;
+            font-weight: 800;
+          }
+
+          .step-content p {
+            margin: 0;
+            font-size: 13.5px;
+            line-height: 1.55;
+            color: #64748b;
+          }
+
+          .cta-box {
+            margin-top: 28px;
+            padding: 24px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(28,22,207,0.08), rgba(107,56,212,0.10));
+            text-align: center;
+            border: 1px solid #ddd6fe;
+          }
+
+          .cta-box h2 {
+            margin: 0 0 8px;
+            font-size: 19px;
+            color: #0f172a;
+            font-weight: 900;
+          }
+
+          .cta-box p {
+            margin: 0 0 18px;
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+
           .btn {
             display: inline-block;
             background: #1C16CF;
-            color: #ffffff;
+            color: #ffffff !important;
             text-decoration: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 800;
+            border-radius: 999px;
+          }
+
+          .trust-note {
+            margin-top: 24px;
+            text-align: center;
             font-size: 13px;
-            font-weight: 700;
-            border-radius: 9999px;
-            transition: background 0.2s ease;
+            color: #94a3b8;
+            line-height: 1.6;
           }
-          .btn-secondary {
-            background: #6B38D4;
-          }
+
           .footer {
             background: #f8fafc;
-            padding: 20px 30px;
+            padding: 22px 30px;
             border-top: 1px solid #e2e8f0;
             text-align: center;
             font-size: 12px;
             color: #94a3b8;
+            line-height: 1.6;
           }
+
           .footer a {
-            color: #1c16cf;
+            color: #1C16CF;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
+          }
+
+          @media (max-width: 520px) {
+            .container {
+              margin: 20px 12px;
+              border-radius: 22px;
+            }
+
+            .content {
+              padding: 30px 20px;
+            }
+
+            .step {
+              gap: 12px;
+            }
           }
         </style>
       </head>
       <body>
         <div class="container">
+
           <div class="header">
-            <img src="https://www.buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo" />
-            <h1>BuyKarlo 2.0</h1>
-            <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px; font-weight: 500;">Your Verified AMU Student Marketplace</p>
+            <img src="https://www.buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo">
+            <h1>BuyKarlo</h1>
+            <p>Your Verified AMU Student Marketplace</p>
           </div>
+
           <div class="content">
-            <div class="greeting">Hey ${fullName}! 👋</div>
+            <div class="greeting">Hey \${fullName}! 👋</div>
+
             <div class="intro">
-              Welcome to Aligarh Muslim University's official student peer-to-peer marketplace. 
-              We're thrilled to have you! BuyKarlo helps you securely trade books, cycles, laptops, 
-              and dorm gear with verified students on campus.
+              Welcome to BuyKarlo — a student-first marketplace built for Aligarh Muslim University.
+              Buy books, cycles, gadgets, hostel essentials, and more from verified students around campus.
               <br><br>
-              To get you started, we've prepared quick video tutorials to make buying and selling frictionless:
+              Here’s how buying and selling works in a few simple steps:
             </div>
-            
-            <div class="grid">
-              <div class="card">
-                <h3>🛍️ Buying Guide</h3>
-                <p>Learn how to safely negotiate, arrange meetups, and pay on campus.</p>
-                <a href="https://www.youtube.com/watch?v=mock-buyer-tutorial" class="btn" target="_blank">Watch Guide</a>
+
+            <div class="section-title">How BuyKarlo Works</div>
+
+            <div class="flow-card buy">
+              <h2 class="flow-heading">🛍️ Want to Buy?</h2>
+
+              <div class="step">
+                <div class="icon">🔎</div>
+                <div class="step-content">
+                  <h3>Explore Listings</h3>
+                  <p>Browse products listed by verified AMU students — from books to daily campus essentials.</p>
+                </div>
               </div>
-              <div class="card">
-                <h3>🏷️ Selling Guide</h3>
-                <p>Learn how to upload products, chat with buyers, and secure deal completions.</p>
-                <a href="https://www.youtube.com/watch?v=mock-seller-tutorial" class="btn btn-secondary" target="_blank">Watch Guide</a>
+
+              <div class="step">
+                <div class="icon">💬</div>
+                <div class="step-content">
+                  <h3>Chat with Seller</h3>
+                  <p>Ask questions, negotiate price, and confirm the condition of the product directly.</p>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="icon">📍</div>
+                <div class="step-content">
+                  <h3>Meet on Campus</h3>
+                  <p>Choose a safe campus spot, check the product, and complete the deal in person.</p>
+                </div>
               </div>
             </div>
 
-            <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; text-align: center; margin: 0;">
-              Pro tip: Completing deals and keeping listings updated boosts your student **Trust Score**!
-            </p>
+            <div class="flow-card sell">
+              <h2 class="flow-heading">🏷️ Want to Sell?</h2>
+
+              <div class="step">
+                <div class="icon">📸</div>
+                <div class="step-content">
+                  <h3>Upload Product</h3>
+                  <p>Add photos, price, category, and basic details of the item you want to sell.</p>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="icon">✨</div>
+                <div class="step-content">
+                  <h3>Improve Your Listing</h3>
+                  <p>Write a clear description, mention condition honestly, and make your product easy to discover.</p>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="icon">🤝</div>
+                <div class="step-content">
+                  <h3>Chat, Meet, Sell</h3>
+                  <p>Respond to buyers, fix a campus meetup point, and complete the sale smoothly.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="cta-box">
+              <h2>Start exploring BuyKarlo today 🚀</h2>
+              <p>Find useful products nearby or list something you no longer need.</p>
+              <a href="https://www.buykarlo.in" class="btn" target="_blank">Open BuyKarlo</a>
+            </div>
+
+            <div class="trust-note">
+              Pro tip: Honest listings, quick replies, and smooth deals help build your student trust on BuyKarlo.
+            </div>
           </div>
+
           <div class="footer">
-            Sent to you by BuyKarlo 2.0 at Aligarh Muslim University.<br>
-            Need help? Reach out at <a href="mailto:support@buykarlo.com">support@buykarlo.com</a>.
+            © 2026 BuyKarlo · Verified Student-only P2P Marketplace<br>
+            Need help? Reach out at <a href="mailto:help@buykarlo.in">help@buykarlo.in</a>
           </div>
+
         </div>
       </body>
       </html>
@@ -180,8 +329,8 @@ export async function sendWelcomeEmail(toEmail: string, fullName: string) {
     const data = await resend.emails.send({
       from: `BuyKarlo <${SENDER_EMAIL}>`,
       to: toEmail,
-      replyTo: "buykarlo.official@gmail.com",
-      subject: "Welcome to BuyKarlo 2.0! 🎉",
+      replyTo: "help@buykarlo.in",
+      subject: "Welcome to BuyKarlo! 🎉",
       html: emailContent,
     })
 
@@ -310,7 +459,7 @@ export async function sendReviewReminderEmail(
         <div class="container">
           <div class="header">
             <img src="https://www.buykarlo.in/brand/buykarlo-mark.png" alt="BuyKarlo Logo" />
-            <h1>BuyKarlo 2.0</h1>
+            <h1>BuyKarlo</h1>
           </div>
           <div class="content">
             <div class="headline">${bodyHeadline}</div>
@@ -325,7 +474,8 @@ export async function sendReviewReminderEmail(
             </p>
           </div>
           <div class="footer">
-            BuyKarlo 2.0 • Aligarh Muslim University
+            BuyKarlo • Aligarh Muslim University<br>
+            Need help? Reach out at <a href="mailto:help@buykarlo.in" style="color: #1C16CF; text-decoration: none; font-weight: 700;">help@buykarlo.in</a>
           </div>
         </div>
       </body>
@@ -335,7 +485,7 @@ export async function sendReviewReminderEmail(
     const data = await resend.emails.send({
       from: `BuyKarlo <${SENDER_EMAIL}>`,
       to: toEmail,
-      replyTo: "buykarlo.official@gmail.com",
+      replyTo: "help@buykarlo.in",
       subject: subject,
       html: emailContent,
     })
@@ -605,6 +755,7 @@ export async function sendChatEmailNotification({
       <div class="footer">
         <p class="footer-text">
          © 2026 BuyKarlo · Verified Student-only P2P Marketplace<br>
+          Need help? Reach out at <a href="mailto:help@buykarlo.in" class="footer-link">help@buykarlo.in</a><br>
           If you don't want to receive these emails, you can update your notification settings in your profile.<br>
           <a href="${siteUrl}" class="footer-link">Visit BuyKarlo</a>
         </p>
@@ -617,7 +768,7 @@ export async function sendChatEmailNotification({
     const data = await resend.emails.send({
       from: `BuyKarlo <${SENDER_EMAIL}>`,
       to: toEmail,
-      replyTo: "buykarlo.official@gmail.com",
+      replyTo: "help@buykarlo.in",
       subject: emailSubject,
       html: emailBody,
     })

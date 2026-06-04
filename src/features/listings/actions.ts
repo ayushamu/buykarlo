@@ -444,7 +444,7 @@ const fetchActiveListings = unstable_cache(
           categorySlug,
           keywords,
           sellerTrustScore: (l.profiles as any)?.trust_score || 0,
-          isTrustedSeller: (l.profiles as any)?.email === "buykarlo.official@gmail.com"
+          isTrustedSeller: ["buykarlo.official@gmail.com", "help@buykarlo.in"].includes((l.profiles as any)?.email)
         }
       }) || []
       console.log(`[getActiveListings - DB Fetch] Formatting took ${(performance.now() - formatStart).toFixed(2)}ms`);

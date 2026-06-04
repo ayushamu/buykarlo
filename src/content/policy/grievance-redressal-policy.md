@@ -42,7 +42,7 @@ Any enforcement action taken by BuyKarlo shall not be interpreted as a legal det
 ## 4. SUBMISSION OF GRIEVANCES
 
 Users may submit complaints by contacting:
-**Email:**  help.buykarlo@gmail.com
+**Email:**  help@buykarlo.in
 When submitting a grievance, users should provide:
 * Full name;
 * Registered email address or mobile number;
@@ -139,6 +139,6 @@ Updated versions shall become effective upon publication on the Platform.
 ## 14. CONTACT DETAILS
 
 For grievances, complaints, or policy-related concerns:
-**Email:**  help.buykarlo@gmail.com
+**Email:**  help@buykarlo.in
 **Address:**  Aligarh, Uttar Pradesh, India
 Users are encouraged to provide complete and accurate information to facilitate efficient review of complaints.

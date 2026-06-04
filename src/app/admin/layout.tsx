@@ -82,7 +82,7 @@ export default function AdminLayout({
             <span>Switch to Shop</span>
           </Link>
           <div className="text-[10px] text-slate-500 font-body text-center mt-2">
-            BuyKarlo v2.0 • Admin Mode
+            BuyKarlo • Admin Mode
           </div>
         </div>
       </aside>

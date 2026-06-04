@@ -384,7 +384,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
 
             <div className="mt-4">
-              {listing.seller.email === "buykarlo.official@gmail.com" ? (
+              {["buykarlo.official@gmail.com", "help@buykarlo.in"].includes(listing.seller.email) ? (
                 <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-secondary px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[0_12px_24px_rgba(28,22,207,0.18)]">
                   <BadgeCheck size={16} className="fill-white" />
                   BuyKarlo Trusted
