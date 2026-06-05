@@ -255,3 +255,31 @@
     display: none;
   }
 }
+
+@utility premium-dropdown-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--seller-border) transparent;
+
+  /* Chrome, Edge, Safari */
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--seller-border);
+    border-radius: 20px;
+    border: transparent;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--seller-primary);
+  }
+}
+

@@ -84,9 +84,11 @@ function SellPageInner() {
   const [selectedL1, setSelectedL1] = useState("electronics")
   const [selectedL2, setSelectedL2] = useState("")
   const [isSubCategoryOpen, setIsSubCategoryOpen] = useState(false)
+  const [isConditionOpen, setIsConditionOpen] = useState(false)
   const [attributes, setAttributes] = useState<Record<string, string>>({})
   const [loadedCategorySlug, setLoadedCategorySlug] = useState<string | null>(null)
   const [loadedAttributes, setLoadedAttributes] = useState<Record<string, string> | null>(null)
+  const [openAttributeDropdownKey, setOpenAttributeDropdownKey] = useState<string | null>(null)
 
   const parentCategories = useMemo(() => dbCategories.filter(c => !c.parent_id), [dbCategories])
   const subcategoriesForSelectedL1 = useMemo(() => {
@@ -346,7 +348,7 @@ function SellPageInner() {
   }, [attributeSchema])
 
   useEffect(() => {
-    if (!isCampusOpen && !isCategoryOpen && !isSubCategoryOpen) return
+    if (!isCampusOpen && !isCategoryOpen && !isSubCategoryOpen && !isConditionOpen && !openAttributeDropdownKey) return
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       if (isCampusOpen && !target.closest(".campus-dropdown-container")) {
@@ -358,10 +360,16 @@ function SellPageInner() {
       if (isSubCategoryOpen && !target.closest(".subcategory-dropdown-container")) {
         setIsSubCategoryOpen(false)
       }
+      if (isConditionOpen && !target.closest(".condition-dropdown-container")) {
+        setIsConditionOpen(false)
+      }
+      if (openAttributeDropdownKey && !target.closest(".attribute-dropdown-container")) {
+        setOpenAttributeDropdownKey(null)
+      }
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [isCampusOpen, isCategoryOpen, isSubCategoryOpen])
+  }, [isCampusOpen, isCategoryOpen, isSubCategoryOpen, isConditionOpen, openAttributeDropdownKey])
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return
@@ -844,7 +852,7 @@ function SellPageInner() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-[var(--seller-border)] bg-white shadow-[0_20px_40px_rgba(31,157,119,0.08)]">
+          <div className="rounded-[2rem] border border-[var(--seller-border)] bg-white shadow-[0_20px_40px_rgba(31,157,119,0.08)]">
             <div className="border-b border-[var(--seller-border)] px-5 py-4 md:px-6">
               <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--seller-primary)]">Stage 2</p>
               <h2 className="font-display text-3xl font-bold tracking-tight text-on-surface">Core details</h2>
@@ -899,7 +907,7 @@ function SellPageInner() {
                     <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isCategoryOpen && "rotate-180")} />
                   </button>
                   {isCategoryOpen && (
-                    <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 scrollbar-none animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
                       {(parentCategories.length > 0 ? parentCategories : CATEGORIES).map((item) => {
                         const isSelected = selectedL1 === item.slug
                         return (
@@ -919,10 +927,10 @@ function SellPageInner() {
                               setIsCategoryOpen(false)
                             }}
                             className={cn(
-                              "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                              "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
                               isSelected
                                 ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
-                                : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface hover:translate-x-0.5"
+                                : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
                             )}
                           >
                             <span className="truncate">{item.name}</span>
@@ -951,7 +959,7 @@ function SellPageInner() {
                       <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isSubCategoryOpen && "rotate-180")} />
                     </button>
                     {isSubCategoryOpen && (
-                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 scrollbar-none animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
                         {subcategoriesForSelectedL1.map((item) => {
                           const isSelected = selectedL2 === item.slug
                           return (
@@ -964,10 +972,10 @@ function SellPageInner() {
                                 setIsSubCategoryOpen(false)
                               }}
                               className={cn(
-                                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
                                 isSelected
                                   ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
-                                  : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface hover:translate-x-0.5"
+                                  : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
                               )}
                             >
                               <span className="truncate">{item.name}</span>
@@ -998,56 +1006,100 @@ function SellPageInner() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">Condition</label>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {CONDITIONS.map((item) => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => setCondition(item.value)}
-                      className={cn(
-                        "rounded-[1.5rem] border px-4 py-4 text-base font-semibold transition-colors",
-                        condition === item.value
-                          ? "border-[var(--seller-primary)] bg-[var(--seller-primary)] text-white shadow-[0_16px_30px_rgba(31,157,119,0.18)]"
-                          : "border-outline-variant/25 bg-white text-on-surface-variant hover:border-[var(--seller-border)] hover:bg-[var(--seller-surface)]"
-                      )}
-                    >
-                      {item.value === "like_new" ? "Like New" : item.name}
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-2 relative condition-dropdown-container">
+                <label className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                  Condition
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsConditionOpen(!isConditionOpen)}
+                  disabled={submitting}
+                  className="flex h-14 w-full items-center justify-between rounded-[1.5rem] border border-[var(--seller-border)] bg-white px-5 text-base font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                  <span className="truncate">
+                    {CONDITIONS.find((item) => item.value === condition)?.name || "Select Condition"}
+                  </span>
+                  <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isConditionOpen && "rotate-180")} />
+                </button>
+                {isConditionOpen && (
+                  <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                    {CONDITIONS.map((item) => {
+                      const isSelected = condition === item.value
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => {
+                            setCondition(item.value)
+                            setIsConditionOpen(false)
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
+                            isSelected
+                              ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
+                              : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
+                          )}
+                        >
+                          <span className="truncate">{item.name}</span>
+                          {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Dynamic Category Attributes */}
               {attributeSchema.length > 0 ? (
                 <div className="space-y-4 rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]/25 p-5 md:p-6">
                   <p className="text-xs font-bold uppercase tracking-wider text-[var(--seller-primary-strong)]">Category Specifications</p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     {attributeSchema.map((attr: any) => (
-                      <div key={attr.key} className="space-y-2 relative">
+                      <div key={attr.key} className="space-y-2 relative attribute-dropdown-container">
                         <label className="text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
                           {attr.label}
                         </label>
                         <div className="relative">
-                          <select
-                            value={attributes[attr.key] || ""}
-                            onChange={(e) => {
-                              setAttributes((prev) => ({
-                                ...prev,
-                                [attr.key]: e.target.value,
-                              }))
-                            }}
+                          <button
+                            type="button"
+                            onClick={() => setOpenAttributeDropdownKey(openAttributeDropdownKey === attr.key ? null : attr.key)}
                             disabled={submitting}
-                            className="appearance-none flex h-12 w-full items-center justify-between rounded-xl border border-[var(--seller-border)] bg-white px-4 pr-10 text-sm font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                            className="flex h-12 w-full items-center justify-between rounded-xl border border-[var(--seller-border)] bg-white px-4 text-sm font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
                           >
-                            {attr.options?.map((opt: string) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
+                            <span className="truncate">
+                              {attributes[attr.key] || `Select ${attr.label}`}
+                            </span>
+                            <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", openAttributeDropdownKey === attr.key && "rotate-180")} />
+                          </button>
+                          
+                          {openAttributeDropdownKey === attr.key && (
+                            <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                              {attr.options?.map((opt: string) => {
+                                const isSelected = attributes[attr.key] === opt
+                                return (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => {
+                                      setAttributes((prev) => ({
+                                        ...prev,
+                                        [attr.key]: opt,
+                                      }))
+                                      setOpenAttributeDropdownKey(null)
+                                    }}
+                                    className={cn(
+                                      "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
+                                      isSelected
+                                        ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
+                                        : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
+                                    )}
+                                  >
+                                    <span className="truncate">{opt}</span>
+                                    {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1064,7 +1116,7 @@ function SellPageInner() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-[var(--seller-border)] bg-white shadow-[0_20px_40px_rgba(31,157,119,0.08)]">
+          <div className="rounded-[2rem] border border-[var(--seller-border)] bg-white shadow-[0_20px_40px_rgba(31,157,119,0.08)]">
             <button
               type="button"
               onClick={() => setDetailsOpen((current) => !current)}
@@ -1096,7 +1148,7 @@ function SellPageInner() {
                       <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isCampusOpen && "rotate-180")} />
                     </button>
                     {isCampusOpen && (
-                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 scrollbar-none animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
                         {CAMPUSES.filter(c => c.active).map((c) => {
                           const dbName = c.name.split(" (")[0]
                           const isSelected = campus === dbName
@@ -1109,10 +1161,10 @@ function SellPageInner() {
                                 setIsCampusOpen(false)
                               }}
                               className={cn(
-                                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
                                 isSelected
                                   ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
-                                  : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface hover:translate-x-0.5"
+                                  : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
                               )}
                             >
                               <span className="truncate">{c.name}</span>
