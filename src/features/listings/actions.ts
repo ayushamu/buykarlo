@@ -31,6 +31,7 @@ interface CreateListingInput {
   videoFit?: string
   videoAspectRatio?: string
   imageUrls: string[]
+  attributes?: Record<string, string>
 }
 
 export async function createListing(input: CreateListingInput) {
@@ -75,7 +76,8 @@ export async function createListing(input: CreateListingInput) {
       .eq("id", user.id)
       .maybeSingle()
 
-    const userCampus = input.campus || profile?.university || "Aligarh Muslim University"
+    const rawCampus = input.campus || profile?.university || "Aligarh Muslim University"
+    const userCampus = rawCampus.includes(" (") ? rawCampus.split(" (")[0] : rawCampus
 
     // 4. Write listing to Supabase Database
     const { data: listing, error: listingError } = await supabase
@@ -101,6 +103,9 @@ export async function createListing(input: CreateListingInput) {
               .split(",")
               .map((k) => k.trim().toLowerCase())
               .filter(Boolean)
+          }
+          if (input.attributes) {
+            Object.assign(meta, input.attributes)
           }
           return meta
         })(),
@@ -407,7 +412,14 @@ const fetchActiveListings = unstable_cache(
         console.log(`[getActiveListings - DB Fetch] Category lookup for "${categorySlug}" took ${(performance.now() - catStart).toFixed(2)}ms`);
         
         if (categoryData) {
-          query = query.eq("category_id", categoryData.id)
+          // Fetch subcategories
+          const { data: subcats } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("parent_id", categoryData.id)
+          
+          const catIds = [categoryData.id, ...(subcats?.map(s => s.id) || [])]
+          query = query.in("category_id", catIds)
         } else {
           console.log(`[getActiveListings - DB Fetch] Category "${categorySlug}" not found. Total time: ${(performance.now() - startTime).toFixed(2)}ms`);
           // Category doesn't exist, return empty listings list
@@ -448,7 +460,8 @@ const fetchActiveListings = unstable_cache(
           categorySlug,
           keywords,
           sellerTrustScore: (l.profiles as any)?.trust_score || 0,
-          isTrustedSeller: ["buykarlo.official@gmail.com", "help@buykarlo.in"].includes((l.profiles as any)?.email)
+          isTrustedSeller: ["buykarlo.official@gmail.com", "help@buykarlo.in"].includes((l.profiles as any)?.email),
+          metadata: l.metadata || {},
         }
       }) || []
       console.log(`[getActiveListings - DB Fetch] Formatting took ${(performance.now() - formatStart).toFixed(2)}ms`);
@@ -466,6 +479,27 @@ const fetchActiveListings = unstable_cache(
     revalidate: 60
   }
 )
+
+export async function getCategories() {
+  try {
+    const supabase = createPublicClient()
+    const { data: categories, error } = await supabase
+      .from("categories")
+      .select("id, slug, name, parent_id, icon_name, attribute_schema, is_active")
+      .eq("is_active", true)
+      .order("name", { ascending: true })
+
+    if (error) {
+      console.error("Error fetching categories:", error)
+      return { error: error.message }
+    }
+
+    return { success: true, categories }
+  } catch (error) {
+    console.error("getCategories Exception:", error)
+    return { error: "An unexpected error occurred while fetching categories." }
+  }
+}
 
 export async function getActiveListings(categorySlug?: string, campus?: string) {
   return fetchActiveListings(categorySlug, campus)
@@ -874,6 +908,7 @@ export interface UpdateListingInput {
   videoFit?: string
   videoAspectRatio?: string
   imageUrls: string[]
+  attributes?: Record<string, string>
 }
 
 export async function getListingForEdit(id: string) {
@@ -922,6 +957,15 @@ export async function getListingForEdit(id: string) {
       return kw || ""
     })()
 
+    const metadata = listing.metadata as Record<string, any> || {}
+    const attributes: Record<string, string> = {}
+    const reservedKeys = ["department", "videoUrl", "videoFit", "videoAspectRatio", "keywords"]
+    Object.keys(metadata).forEach(key => {
+      if (!reservedKeys.includes(key)) {
+        attributes[key] = String(metadata[key])
+      }
+    })
+
     return {
       success: true,
       listing: {
@@ -938,6 +982,7 @@ export async function getListingForEdit(id: string) {
         videoUrl: (listing.metadata as any)?.videoUrl || "",
         videoFit: (listing.metadata as any)?.videoFit || "cover",
         videoAspectRatio: (listing.metadata as any)?.videoAspectRatio || "4/3",
+        attributes,
       }
     }
   } catch (err) {
@@ -982,6 +1027,9 @@ export async function updateListing(input: UpdateListingInput) {
       return { error: `Database error or category "${input.categorySlug}" not found.` }
     }
 
+    const rawCampus = input.campus || "Aligarh Muslim University"
+    const userCampus = rawCampus.includes(" (") ? rawCampus.split(" (")[0] : rawCampus
+
     // 4. Update listing row
     const { error: updateError } = await supabase
       .from("listings")
@@ -991,7 +1039,7 @@ export async function updateListing(input: UpdateListingInput) {
         description: input.description.trim(),
         price: input.price,
         condition: input.condition,
-        campus: input.campus || "Aligarh Muslim University",
+        campus: userCampus,
         metadata: (() => {
           const meta: Record<string, any> = {}
           if (input.department) meta.department = input.department.trim()
@@ -1003,6 +1051,9 @@ export async function updateListing(input: UpdateListingInput) {
               .split(",")
               .map((k) => k.trim().toLowerCase())
               .filter(Boolean)
+          }
+          if (input.attributes) {
+            Object.assign(meta, input.attributes)
           }
           return meta
         })(),

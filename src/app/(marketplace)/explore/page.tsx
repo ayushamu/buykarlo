@@ -11,23 +11,79 @@ import {
   Sparkles, 
   X,
   ChevronDown,
-  Filter
+  Filter,
+  HelpCircle,
+  Smartphone,
+  FileText,
+  Lightbulb,
+  Image as ImageIcon,
+  Boxes,
+  Dumbbell,
+  PenTool,
+  Shirt,
+  Armchair,
+  Plug,
+  Music,
+  FlaskConical,
+  Package
 } from "lucide-react"
 import { ListingCard } from "@/components/listing/ListingCard"
 import { MarketplaceHeroCarousel } from "@/components/marketplace/MarketplaceHeroCarousel"
 import { MobileCategoryStrip } from "@/components/marketplace/MobileCategoryStrip"
-import { getActiveListings } from "@/features/listings/actions"
+import { getActiveListings, getCategories } from "@/features/listings/actions"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import { CAMPUSES } from "@/lib/constants"
 
 const CATEGORIES = [
-  { id: "all", name: "All", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
+  { id: "all", name: "All Items", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
   { id: "electronics", name: "Electronics", shortName: "Electronics", icon: Laptop, tone: "sky" as const },
   { id: "books", name: "Books", shortName: "Books", icon: BookOpen, tone: "amber" as const },
   { id: "cycles", name: "Cycles", shortName: "Cycles", icon: Bike, tone: "emerald" as const },
   { id: "dorm-decor", name: "Dorm Decor", shortName: "Dorm Decor", icon: HomeIcon, tone: "rose" as const },
 ]
+
+const ICON_MAP: Record<string, any> = {
+  Laptop: Laptop,
+  Smartphone: Smartphone,
+  BookOpen: BookOpen,
+  FileText: FileText,
+  Bike: Bike,
+  Lightbulb: Lightbulb,
+  Image: ImageIcon,
+  Boxes: Boxes,
+  Home: HomeIcon,
+  Sparkles: Sparkles,
+  Dumbbell: Dumbbell,
+  PenTool: PenTool,
+  Shirt: Shirt,
+  Armchair: Armchair,
+  Plug: Plug,
+  Music: Music,
+  FlaskConical: FlaskConical,
+  Package: Package,
+}
+
+function getCategoryIcon(name?: string, slug?: string) {
+  if (name && ICON_MAP[name]) return ICON_MAP[name]
+  
+  // Slug-based fallbacks for legacy/null values
+  if (slug === "all") return Sparkles
+  if (slug === "electronics") return Laptop
+  if (slug === "books") return BookOpen
+  if (slug === "cycles") return Bike
+  if (slug === "dorm-decor") return HomeIcon
+  if (slug === "sports-equipment") return Dumbbell
+  if (slug === "stationery") return PenTool
+  if (slug === "fashion") return Shirt
+  if (slug === "furniture") return Armchair
+  if (slug === "appliances") return Plug
+  if (slug === "instruments") return Music
+  if (slug === "lab-equipment") return FlaskConical
+  if (slug === "other") return Package
+  
+  return HelpCircle
+}
 
 function ExploreContent() {
   const router = useRouter()
@@ -48,6 +104,34 @@ function ExploreContent() {
   const [sortBy, setSortBy] = useState("latest")
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
   const [showAllCategories, setShowAllCategories] = useState(false)
+  const [dbCategories, setDbCategories] = useState<any[]>([])
+
+  useEffect(() => {
+    async function loadCategories() {
+      const res = await getCategories()
+      if (res.categories) {
+        setDbCategories(res.categories)
+      }
+    }
+    loadCategories()
+  }, [])
+
+  const dynamicCategories = useMemo(() => {
+    if (dbCategories.length === 0) return CATEGORIES
+    return [
+      { id: "all", name: "All Items", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
+      ...dbCategories.filter(c => !c.parent_id).map((c, idx) => {
+        const tones = ["sky", "amber", "emerald", "rose", "indigo"] as const
+        return {
+          id: c.slug,
+          name: c.name,
+          shortName: c.name,
+          icon: getCategoryIcon(c.icon_name, c.slug),
+          tone: tones[idx % tones.length],
+        }
+      })
+    ]
+  }, [dbCategories])
 
   // Sync category state from URL query params
   useEffect(() => {
@@ -175,38 +259,71 @@ function ExploreContent() {
           <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/75 mb-1">
             Categories
           </p>
-          {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map((cat) => {
-            const Icon = cat.icon
-            const isActive = selectedCategory === cat.id
+          {(showAllCategories ? dynamicCategories : dynamicCategories.slice(0, 4)).map((categoryItem) => {
+            const Icon = categoryItem.icon
+            const isActive = selectedCategory === categoryItem.id
+
+            const activeCategoryObj = dbCategories.find(c => c.slug === selectedCategory)
+            const isChildActive = !!(activeCategoryObj?.parent_id && dbCategories.find(c => c.id === activeCategoryObj.parent_id)?.slug === categoryItem.id)
+            const isExpanded = isActive || isChildActive
+            const subcats = dbCategories.filter(c => c.parent_id === dbCategories.find(p => p.slug === categoryItem.id)?.id)
+
             return (
-              <button
-                key={cat.id}
-                onClick={() => selectCategoryAndRedirect(cat.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
-                  isActive
-                    ? "bg-primary text-white shadow-md shadow-primary/10"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-primary"
+              <div key={categoryItem.id} className="space-y-1">
+                <button
+                  onClick={() => selectCategoryAndRedirect(categoryItem.id)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left font-body text-xs font-semibold transition-all cursor-pointer",
+                    isActive
+                      ? "bg-primary text-white shadow-md shadow-primary/10"
+                      : isChildActive
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-primary"
+                  )}
+                >
+                  <Icon size={18} />
+                  <span>{categoryItem.name}</span>
+                </button>
+                
+                {/* Indented child subcategories */}
+                {isExpanded && subcats.length > 0 && (
+                  <div className="pl-6 pr-2 py-1 space-y-1 border-l border-slate-100 ml-6 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {subcats.map((subcat) => {
+                      const isSubcatActive = selectedCategory === subcat.slug
+                      return (
+                        <button
+                          key={subcat.slug}
+                          onClick={() => selectCategoryAndRedirect(subcat.slug)}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-[0.8rem] px-3.5 py-2 text-left text-[11px] font-bold transition-all cursor-pointer",
+                            isSubcatActive
+                              ? "bg-primary/10 text-primary font-extrabold"
+                              : "text-on-surface-variant/80 hover:bg-slate-50 hover:text-on-surface"
+                          )}
+                        >
+                          <span>{subcat.name}</span>
+                          {isSubcatActive && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                        </button>
+                      )
+                    })}
+                  </div>
                 )}
-              >
-                <Icon size={18} />
-                <span>{cat.name}</span>
-              </button>
+              </div>
             )
           })}
-          {CATEGORIES.length > 4 && (
+          {dynamicCategories.length > 4 && (
             <button
               onClick={() => setShowAllCategories(!showAllCategories)}
               className="flex w-full items-center justify-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-low hover:bg-surface-container px-4 py-2.5 text-xs font-bold text-on-surface-variant transition-colors cursor-pointer mt-1"
             >
-              <span>{showAllCategories ? "Show Less" : `Show More (+${CATEGORIES.length - 4})`}</span>
+              <span>{showAllCategories ? "Show Less" : `Show More (+${dynamicCategories.length - 4})`}</span>
               <ChevronDown size={14} className={cn("transition-transform duration-200 text-outline-variant", showAllCategories && "rotate-180 text-primary")} />
             </button>
           )}
         </aside>
 
         <MobileCategoryStrip
-          categories={CATEGORIES}
+          categories={dynamicCategories}
           selectedCategory={selectedCategory}
           onSelectCategory={selectCategoryAndRedirect}
           className="shrink-0 md:hidden"

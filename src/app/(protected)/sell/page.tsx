@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Camera, Check, ChevronDown, ImagePlus, Loader2, MapPin, Sparkles, Trash2, TrendingUp, Crop, Pin } from "lucide-react"
-import { createListing, getListingForEdit, updateListing } from "@/features/listings/actions"
+import { createListing, getListingForEdit, updateListing, getCategories } from "@/features/listings/actions"
 import { Input } from "@/components/ui/input"
 import { DRAFT_EVENT_NAME, DRAFT_STORAGE_KEY } from "@/components/ai/BuyKarloSellerBot"
 import { cn } from "@/lib/utils"
 import { compressImage } from "@/lib/image"
 import { ImageCropperModal } from "@/components/listing/ImageCropperModal"
+import { createClient } from "@/lib/supabase/client"
+import { CAMPUSES } from "@/lib/constants"
 import { CustomVideoPlayer } from "@/components/shared/CustomVideoPlayer"
 
 const CATEGORIES = [
@@ -61,12 +63,14 @@ function SellPageInner() {
   const [price, setPrice] = useState("")
   const [category, setCategory] = useState("electronics")
   const [condition, setCondition] = useState("like_new")
-  const [campus] = useState("Aligarh Muslim University")
+  const [campus, setCampus] = useState("Aligarh Muslim University")
   const [department, setDepartment] = useState("")
   const [keywords, setKeywords] = useState("")
   const [images, setImages] = useState<ImageUploadState[]>([])
   const [activeCropIndex, setActiveCropIndex] = useState<number | null>(null)
   const [isCropOpen, setIsCropOpen] = useState(false)
+  const [isCampusOpen, setIsCampusOpen] = useState(false)
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [video, setVideo] = useState<VideoUploadState | null>(null)
   const [videoFit, setVideoFit] = useState<"cover" | "contain">("cover")
   const [videoAspectRatio, setVideoAspectRatio] = useState<"4/3" | "16/9" | "1/1" | "9/16">("4/3")
@@ -76,7 +80,45 @@ function SellPageInner() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [descriptionAiNote, setDescriptionAiNote] = useState<string | null>(null)
 
-  const selectedCategoryLabel = CATEGORIES.find((item) => item.slug === category)?.name ?? "Electronics"
+  const [dbCategories, setDbCategories] = useState<any[]>([])
+  const [selectedL1, setSelectedL1] = useState("electronics")
+  const [selectedL2, setSelectedL2] = useState("")
+  const [isSubCategoryOpen, setIsSubCategoryOpen] = useState(false)
+  const [attributes, setAttributes] = useState<Record<string, string>>({})
+  const [loadedCategorySlug, setLoadedCategorySlug] = useState<string | null>(null)
+  const [loadedAttributes, setLoadedAttributes] = useState<Record<string, string> | null>(null)
+
+  const parentCategories = useMemo(() => dbCategories.filter(c => !c.parent_id), [dbCategories])
+  const subcategoriesForSelectedL1 = useMemo(() => {
+    if (!selectedL1) return []
+    const parent = dbCategories.find(c => c.slug === selectedL1)
+    if (!parent) return []
+    return dbCategories.filter(c => c.parent_id === parent.id)
+  }, [selectedL1, dbCategories])
+
+  const activeCategoryObj = useMemo(() => {
+    const targetSlug = selectedL2 || selectedL1
+    return dbCategories.find(c => c.slug === targetSlug)
+  }, [selectedL1, selectedL2, dbCategories])
+
+  const attributeSchema = useMemo(() => {
+    if (!activeCategoryObj?.attribute_schema) return []
+    const schema = activeCategoryObj.attribute_schema
+    if (typeof schema === "string") {
+      try {
+        return JSON.parse(schema)
+      } catch (e) {
+        return []
+      }
+    }
+    return Array.isArray(schema) ? schema : []
+  }, [activeCategoryObj])
+
+  const selectedCategoryLabel = useMemo(() => {
+    const found = dbCategories.find((item) => item.slug === category)
+    if (found) return found.name
+    return parentCategories.find((item) => item.slug === selectedL1)?.name ?? "Electronics"
+  }, [category, dbCategories, selectedL1, parentCategories])
   const suggestedPrice = useMemo(() => {
     const parsed = Number(price)
     if (parsed > 0) return `Similar ${selectedCategoryLabel.toLowerCase()} listings often close around ₹${Math.max(parsed - 2000, 500).toLocaleString("en-IN")}–₹${(parsed + 5000).toLocaleString("en-IN")}.`
@@ -106,6 +148,7 @@ function SellPageInner() {
           setDescription(l.description)
           setPrice(String(l.price))
           setCategory(l.categorySlug)
+          setLoadedCategorySlug(l.categorySlug)
           setCondition(l.condition)
           if (l.department) {
             setDepartment(l.department)
@@ -114,6 +157,13 @@ function SellPageInner() {
           if (l.keywords) {
             setKeywords(l.keywords)
             setDetailsOpen(true)
+          }
+          if (l.campus) {
+            setCampus(l.campus)
+            setDetailsOpen(true)
+          }
+          if (l.attributes) {
+            setLoadedAttributes(l.attributes)
           }
           // Populate existing images
           const populatedImages: ImageUploadState[] = l.imageUrls.map((url) => ({
@@ -165,7 +215,26 @@ function SellPageInner() {
       }
 
       if (nextTitle) setTitle(nextTitle)
-      if (nextCategory && CATEGORIES.some((item) => item.slug === nextCategory)) setCategory(nextCategory)
+      if (nextCategory) {
+        if (dbCategories.length > 0) {
+          const found = dbCategories.find(c => c.slug === nextCategory)
+          if (found) {
+            setCategory(nextCategory)
+            if (found.parent_id) {
+              const parentCat = dbCategories.find(c => c.id === found.parent_id)
+              if (parentCat) {
+                setSelectedL1(parentCat.slug)
+                setSelectedL2(nextCategory)
+              }
+            } else {
+              setSelectedL1(nextCategory)
+              setSelectedL2("")
+            }
+          }
+        } else {
+          setLoadedCategorySlug(nextCategory)
+        }
+      }
       if (nextCondition && CONDITIONS.some((item) => item.value === nextCondition)) setCondition(nextCondition)
       if (nextPrice) setPrice(nextPrice)
       if (nextKeywords) {
@@ -198,6 +267,101 @@ function SellPageInner() {
     window.addEventListener(DRAFT_EVENT_NAME, handleDraftEvent)
     return () => window.removeEventListener(DRAFT_EVENT_NAME, handleDraftEvent)
   }, [editId])
+
+  useEffect(() => {
+    async function loadUserProfile() {
+      if (editId) return
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("university")
+            .eq("id", user.id)
+            .maybeSingle()
+          
+          if (profile?.university) {
+            // Store the campus name without suffix for listings compatibility
+            const dbCampus = profile.university.split(" (")[0]
+            setCampus(dbCampus)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load user profile for default campus:", err)
+      }
+    }
+    loadUserProfile()
+  }, [editId])
+
+  useEffect(() => {
+    async function loadCategories() {
+      const res = await getCategories()
+      if (res.categories) {
+        setDbCategories(res.categories)
+      }
+    }
+    loadCategories()
+  }, [])
+
+  useEffect(() => {
+    if (!loadedCategorySlug || dbCategories.length === 0) return
+    const currentCat = dbCategories.find(c => c.slug === loadedCategorySlug)
+    if (currentCat) {
+      if (currentCat.parent_id) {
+        const parentCat = dbCategories.find(c => c.id === currentCat.parent_id)
+        if (parentCat) {
+          setSelectedL1(parentCat.slug)
+          setSelectedL2(loadedCategorySlug)
+          setCategory(loadedCategorySlug)
+        }
+      } else {
+        setSelectedL1(loadedCategorySlug)
+        setSelectedL2("")
+        setCategory(loadedCategorySlug)
+      }
+    }
+  }, [loadedCategorySlug, dbCategories])
+
+  useEffect(() => {
+    if (loadedAttributes) {
+      setAttributes(loadedAttributes)
+    }
+  }, [loadedAttributes])
+
+  useEffect(() => {
+    if (attributeSchema.length > 0) {
+      const nextAttributes: Record<string, string> = {}
+      attributeSchema.forEach((attr: any) => {
+        if (attributes[attr.key]) {
+          nextAttributes[attr.key] = attributes[attr.key]
+        } else {
+          nextAttributes[attr.key] = attr.options?.[0] || ""
+        }
+      })
+      setAttributes(nextAttributes)
+    } else {
+      setAttributes({})
+    }
+  }, [attributeSchema])
+
+  useEffect(() => {
+    if (!isCampusOpen && !isCategoryOpen && !isSubCategoryOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (isCampusOpen && !target.closest(".campus-dropdown-container")) {
+        setIsCampusOpen(false)
+      }
+      if (isCategoryOpen && !target.closest(".category-dropdown-container")) {
+        setIsCategoryOpen(false)
+      }
+      if (isSubCategoryOpen && !target.closest(".subcategory-dropdown-container")) {
+        setIsSubCategoryOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [isCampusOpen, isCategoryOpen, isSubCategoryOpen])
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return
@@ -421,6 +585,7 @@ function SellPageInner() {
           videoUrl: uploadedVideoUrl || undefined,
           videoFit: uploadedVideoUrl ? videoFit : undefined,
           videoAspectRatio: uploadedVideoUrl ? videoAspectRatio : undefined,
+          attributes,
         })
 
         if (result.error) {
@@ -442,6 +607,7 @@ function SellPageInner() {
           videoUrl: uploadedVideoUrl || undefined,
           videoFit: uploadedVideoUrl ? videoFit : undefined,
           videoAspectRatio: uploadedVideoUrl ? videoAspectRatio : undefined,
+          attributes,
         })
 
         if (result.error) {
@@ -716,25 +882,104 @@ function SellPageInner() {
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="category" className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+              <div className={cn("grid gap-4", subcategoriesForSelectedL1.length > 0 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                <div className="space-y-2 relative category-dropdown-container">
+                  <label className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Category
                   </label>
-                  <select
-                    id="category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
                     disabled={submitting}
-                    className="h-14 w-full rounded-[1.5rem] border border-[var(--seller-border)] bg-white px-4 text-base outline-none"
+                    className="flex h-14 w-full items-center justify-between rounded-[1.5rem] border border-[var(--seller-border)] bg-white px-5 text-base font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
                   >
-                    {CATEGORIES.map((item) => (
-                      <option key={item.slug} value={item.slug}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="truncate">
+                      {parentCategories.find((item) => item.slug === selectedL1)?.name || "Select Category"}
+                    </span>
+                    <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isCategoryOpen && "rotate-180")} />
+                  </button>
+                  {isCategoryOpen && (
+                    <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 scrollbar-none animate-in fade-in slide-in-from-top-2 duration-150">
+                      {(parentCategories.length > 0 ? parentCategories : CATEGORIES).map((item) => {
+                        const isSelected = selectedL1 === item.slug
+                        return (
+                          <button
+                            key={item.slug}
+                            type="button"
+                            onClick={() => {
+                              setSelectedL1(item.slug)
+                              const subcats = dbCategories.filter(c => c.parent_id === item.id)
+                              if (subcats.length > 0) {
+                                setSelectedL2(subcats[0].slug)
+                                setCategory(subcats[0].slug)
+                              } else {
+                                setSelectedL2("")
+                                setCategory(item.slug)
+                              }
+                              setIsCategoryOpen(false)
+                            }}
+                            className={cn(
+                              "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
+                                : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface hover:translate-x-0.5"
+                            )}
+                          >
+                            <span className="truncate">{item.name}</span>
+                            {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
+
+                {subcategoriesForSelectedL1.length > 0 ? (
+                  <div className="space-y-2 relative subcategory-dropdown-container">
+                    <label className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                      Subcategory
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsSubCategoryOpen(!isSubCategoryOpen)}
+                      disabled={submitting}
+                      className="flex h-14 w-full items-center justify-between rounded-[1.5rem] border border-[var(--seller-border)] bg-white px-5 text-base font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="truncate">
+                        {subcategoriesForSelectedL1.find((item) => item.slug === selectedL2)?.name || "Select Subcategory"}
+                      </span>
+                      <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isSubCategoryOpen && "rotate-180")} />
+                    </button>
+                    {isSubCategoryOpen && (
+                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 scrollbar-none animate-in fade-in slide-in-from-top-2 duration-150">
+                        {subcategoriesForSelectedL1.map((item) => {
+                          const isSelected = selectedL2 === item.slug
+                          return (
+                            <button
+                              key={item.slug}
+                              type="button"
+                              onClick={() => {
+                                setSelectedL2(item.slug)
+                                setCategory(item.slug)
+                                setIsSubCategoryOpen(false)
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                                isSelected
+                                  ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
+                                  : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface hover:translate-x-0.5"
+                              )}
+                            >
+                              <span className="truncate">{item.name}</span>
+                              {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 <div className="space-y-2">
                   <label htmlFor="price" className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Set Price
@@ -774,6 +1019,42 @@ function SellPageInner() {
                 </div>
               </div>
 
+              {/* Dynamic Category Attributes */}
+              {attributeSchema.length > 0 ? (
+                <div className="space-y-4 rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]/25 p-5 md:p-6">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--seller-primary-strong)]">Category Specifications</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {attributeSchema.map((attr: any) => (
+                      <div key={attr.key} className="space-y-2 relative">
+                        <label className="text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                          {attr.label}
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={attributes[attr.key] || ""}
+                            onChange={(e) => {
+                              setAttributes((prev) => ({
+                                ...prev,
+                                [attr.key]: e.target.value,
+                              }))
+                            }}
+                            disabled={submitting}
+                            className="appearance-none flex h-12 w-full items-center justify-between rounded-xl border border-[var(--seller-border)] bg-white px-4 pr-10 text-sm font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                          >
+                            {attr.options?.map((opt: string) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] px-4 py-4 text-sm text-[var(--seller-primary-strong)]">
                 <p className="inline-flex items-center gap-2 font-semibold">
                   <TrendingUp size={16} />
@@ -799,14 +1080,48 @@ function SellPageInner() {
             {detailsOpen ? (
               <div className="space-y-5 border-t border-[var(--seller-border)] p-5 md:p-6">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="space-y-2 relative campus-dropdown-container">
                     <label className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       Campus Location
                     </label>
-                    <div className="flex h-14 items-center gap-2 rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)] px-4 text-sm font-semibold text-[var(--seller-primary-strong)]">
-                      <MapPin size={16} />
-                      {campus}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCampusOpen(!isCampusOpen)}
+                      disabled={submitting}
+                      className="flex h-14 w-full items-center justify-between rounded-[1.5rem] border border-[var(--seller-border)] bg-white px-5 text-base font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="truncate">
+                        {CAMPUSES.find(c => c.name.startsWith(campus) || campus.startsWith(c.name.split(" (")[0]))?.name || campus}
+                      </span>
+                      <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", isCampusOpen && "rotate-180")} />
+                    </button>
+                    {isCampusOpen && (
+                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 scrollbar-none animate-in fade-in slide-in-from-top-2 duration-150">
+                        {CAMPUSES.filter(c => c.active).map((c) => {
+                          const dbName = c.name.split(" (")[0]
+                          const isSelected = campus === dbName
+                          return (
+                            <button
+                              key={c.name}
+                              type="button"
+                              onClick={() => {
+                                setCampus(dbName)
+                                setIsCampusOpen(false)
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-body text-xs font-semibold text-left transition-all cursor-pointer",
+                                isSelected
+                                  ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
+                                  : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface hover:translate-x-0.5"
+                              )}
+                            >
+                              <span className="truncate">{c.name}</span>
+                              {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="department" className="text-sm font-bold uppercase tracking-[0.16em] text-on-surface-variant">

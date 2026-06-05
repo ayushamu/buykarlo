@@ -630,3 +630,173 @@ export async function resolveVerification(
     return { error: "An unexpected error occurred." }
   }
 }
+
+export async function createCategoryByAdmin(
+  slug: string,
+  name: string,
+  parentId: string | null,
+  iconName: string,
+  attributeSchemaJson: string
+) {
+  try {
+    const access = await checkAdminAccess()
+    if (!access.isAdmin) return { error: access.error }
+
+    const cleanSlug = slug.trim().toLowerCase()
+    const cleanName = name.trim()
+    const cleanParentId = parentId && parentId !== "" && parentId !== "none" ? parentId : null
+    const cleanIconName = iconName.trim() || null
+
+    if (!cleanSlug || !cleanName) {
+      return { error: "Slug and Name are required." }
+    }
+
+    let parsedSchema = []
+    if (attributeSchemaJson.trim()) {
+      try {
+        parsedSchema = JSON.parse(attributeSchemaJson)
+      } catch (e) {
+        return { error: "Invalid JSON format for attribute schema." }
+      }
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from("categories")
+      .insert({
+        slug: cleanSlug,
+        name: cleanName,
+        parent_id: cleanParentId,
+        icon_name: cleanIconName,
+        attribute_schema: parsedSchema,
+        is_active: true
+      })
+
+    if (error) {
+      console.error("Error creating category:", error)
+      return { error: error.message }
+    }
+
+    revalidatePath("/")
+    revalidatePath("/explore")
+    revalidatePath("/admin/categories")
+    updateTag("active-listings")
+
+    return { success: true }
+  } catch (error) {
+    console.error("createCategoryByAdmin Exception:", error)
+    return { error: "An unexpected error occurred." }
+  }
+}
+
+export async function updateCategoryByAdmin(
+  categoryId: string,
+  slug: string,
+  name: string,
+  parentId: string | null,
+  iconName: string,
+  attributeSchemaJson: string,
+  isActive: boolean
+) {
+  try {
+    const access = await checkAdminAccess()
+    if (!access.isAdmin) return { error: access.error }
+
+    const cleanSlug = slug.trim().toLowerCase()
+    const cleanName = name.trim()
+    const cleanParentId = parentId && parentId !== "" && parentId !== "none" ? parentId : null
+    const cleanIconName = iconName.trim() || null
+
+    if (!categoryId) {
+      return { error: "Category ID is required." }
+    }
+    if (!cleanSlug || !cleanName) {
+      return { error: "Slug and Name are required." }
+    }
+
+    let parsedSchema = []
+    if (attributeSchemaJson.trim()) {
+      try {
+        parsedSchema = JSON.parse(attributeSchemaJson)
+      } catch (e) {
+        return { error: "Invalid JSON format for attribute schema." }
+      }
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from("categories")
+      .update({
+        slug: cleanSlug,
+        name: cleanName,
+        parent_id: cleanParentId,
+        icon_name: cleanIconName,
+        attribute_schema: parsedSchema,
+        is_active: isActive
+      })
+      .eq("id", categoryId)
+
+    if (error) {
+      console.error("Error updating category:", error)
+      return { error: error.message }
+    }
+
+    revalidatePath("/")
+    revalidatePath("/explore")
+    revalidatePath("/admin/categories")
+    updateTag("active-listings")
+
+    return { success: true }
+  } catch (error) {
+    console.error("updateCategoryByAdmin Exception:", error)
+    return { error: "An unexpected error occurred." }
+  }
+}
+
+export async function mergeCategoriesByAdmin(sourceId: string, targetId: string) {
+  try {
+    const access = await checkAdminAccess()
+    if (!access.isAdmin) return { error: access.error }
+
+    if (!sourceId || !targetId) {
+      return { error: "Source and target categories are required." }
+    }
+    if (sourceId === targetId) {
+      return { error: "Source and target categories cannot be the same." }
+    }
+
+    const supabase = await createClient()
+
+    // 1. Move all listings under sourceId to targetId
+    const { error: listingsError } = await supabase
+      .from("listings")
+      .update({ category_id: targetId })
+      .eq("category_id", sourceId)
+
+    if (listingsError) {
+      console.error("Error transferring listings in merge:", listingsError)
+      return { error: "Failed to transfer listings to the new category." }
+    }
+
+    // 2. Soft-delete / deactivate the source category
+    const { error: categoryError } = await supabase
+      .from("categories")
+      .update({ is_active: false })
+      .eq("id", sourceId)
+
+    if (categoryError) {
+      console.error("Error deactivating source category in merge:", categoryError)
+      return { error: "Transfer succeeded, but deactivating the source category failed." }
+    }
+
+    revalidatePath("/")
+    revalidatePath("/explore")
+    revalidatePath("/admin/categories")
+    updateTag("active-listings")
+
+    return { success: true }
+  } catch (error) {
+    console.error("mergeCategoriesByAdmin Exception:", error)
+    return { error: "An unexpected error occurred." }
+  }
+}

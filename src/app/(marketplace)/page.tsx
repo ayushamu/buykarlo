@@ -28,12 +28,14 @@ import {
   X,
   ChevronDown
 } from "lucide-react"
-import { getActiveListings } from "@/features/listings/actions"
+import { getActiveListings, getCategories } from "@/features/listings/actions"
+import { CAMPUSES, getNearbyCampuses } from "@/lib/constants"
 import { ListingCard } from "@/components/listing/ListingCard"
 import { MarketplaceHeroCarousel } from "@/components/marketplace/MarketplaceHeroCarousel"
 import { MobileCategoryStrip } from "@/components/marketplace/MobileCategoryStrip"
 import { CountUpStat, Reveal, StaggerReveal, fadeUpVariants, staggerContainer } from "@/components/motion/PremiumMotion"
 import { cn } from "@/lib/utils"
+import { HelpCircle, Smartphone, FileText, Lightbulb, Image as ImageIcon, Boxes, Dumbbell, PenTool, Shirt, Armchair, Plug, Music, FlaskConical, Package } from "lucide-react"
 
 const CATEGORIES = [
   { id: "all", name: "All Items", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
@@ -42,6 +44,48 @@ const CATEGORIES = [
   { id: "cycles", name: "Cycles", shortName: "Cycles", icon: Bike, tone: "emerald" as const },
   { id: "dorm-decor", name: "Dorm Decor", shortName: "Dorm Decor", icon: HomeIcon, tone: "rose" as const },
 ]
+
+const ICON_MAP: Record<string, any> = {
+  Laptop: Laptop,
+  Smartphone: Smartphone,
+  BookOpen: BookOpen,
+  FileText: FileText,
+  Bike: Bike,
+  Lightbulb: Lightbulb,
+  Image: ImageIcon,
+  Boxes: Boxes,
+  Home: HomeIcon,
+  Sparkles: Sparkles,
+  Dumbbell: Dumbbell,
+  PenTool: PenTool,
+  Shirt: Shirt,
+  Armchair: Armchair,
+  Plug: Plug,
+  Music: Music,
+  FlaskConical: FlaskConical,
+  Package: Package,
+}
+
+function getCategoryIcon(name?: string, slug?: string) {
+  if (name && ICON_MAP[name]) return ICON_MAP[name]
+  
+  // Slug-based fallbacks for legacy/null values
+  if (slug === "all") return Sparkles
+  if (slug === "electronics") return Laptop
+  if (slug === "books") return BookOpen
+  if (slug === "cycles") return Bike
+  if (slug === "dorm-decor") return HomeIcon
+  if (slug === "sports-equipment") return Dumbbell
+  if (slug === "stationery") return PenTool
+  if (slug === "fashion") return Shirt
+  if (slug === "furniture") return Armchair
+  if (slug === "appliances") return Plug
+  if (slug === "instruments") return Music
+  if (slug === "lab-equipment") return FlaskConical
+  if (slug === "other") return Package
+  
+  return HelpCircle
+}
 
 const CONDITION_OPTIONS = [
   { id: "all", label: "All" },
@@ -125,6 +169,234 @@ const FAQ_ITEMS = [
   },
 ]
 
+interface FilterSidebarProps {
+  mobile?: boolean
+  dynamicCategories: any[]
+  dbCategories: any[]
+  showAllCategories: boolean
+  setShowAllCategories: (val: boolean) => void
+  selectedCategory: string
+  setSelectedCategory: (val: string) => void
+  selectedCondition: string
+  setSelectedCondition: (val: string) => void
+  minPrice: number | ""
+  setMinPrice: (val: number | "") => void
+  maxPrice: number | ""
+  setMaxPrice: (val: number | "") => void
+  activeAttributeSchema: any[]
+  selectedAttributes: Record<string, string[]>
+  setSelectedAttributes: (
+    val: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)
+  ) => void
+  resetFilters: () => void
+}
+
+const FilterSidebar = ({
+  mobile = false,
+  dynamicCategories,
+  dbCategories,
+  showAllCategories,
+  setShowAllCategories,
+  selectedCategory,
+  setSelectedCategory,
+  selectedCondition,
+  setSelectedCondition,
+  minPrice,
+  setMinPrice,
+  maxPrice,
+  setMaxPrice,
+  activeAttributeSchema,
+  selectedAttributes,
+  setSelectedAttributes,
+  resetFilters,
+}: FilterSidebarProps) => (
+  <div className={cn("space-y-8", mobile ? "p-5" : "rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm")}>
+    <section>
+      <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Categories</h3>
+      <div className="space-y-2">
+        {(showAllCategories ? dynamicCategories : dynamicCategories.slice(0, 4)).map((categoryItem) => {
+          const Icon = categoryItem.icon
+          const isActive = selectedCategory === categoryItem.id
+
+          const activeCategoryObj = dbCategories.find(c => c.slug === selectedCategory)
+          const isChildActive = !!(activeCategoryObj?.parent_id && dbCategories.find(c => c.id === activeCategoryObj.parent_id)?.slug === categoryItem.id)
+          const isExpanded = isActive || isChildActive
+          const subcats = dbCategories.filter(c => c.parent_id === dbCategories.find(p => p.slug === categoryItem.id)?.id)
+
+          return (
+            <div key={categoryItem.id} className="space-y-1">
+              <button
+                onClick={() => setSelectedCategory(categoryItem.id)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-[1.4rem] px-4 py-3.5 text-left text-base font-semibold transition-all cursor-pointer",
+                  isActive
+                    ? "bg-primary text-white shadow-[0_12px_28px_rgba(59,61,229,0.18)]"
+                    : isChildActive
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+                )}
+              >
+                <Icon size={18} />
+                <span>{categoryItem.name}</span>
+              </button>
+              
+              {/* Indented child subcategories */}
+              {isExpanded && subcats.length > 0 && (
+                <div className="pl-6 pr-2 py-1 space-y-1 border-l border-slate-100 ml-6 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {subcats.map((subcat) => {
+                    const isSubcatActive = selectedCategory === subcat.slug
+                    return (
+                      <button
+                        key={subcat.slug}
+                        onClick={() => setSelectedCategory(subcat.slug)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-[0.8rem] px-3.5 py-2 text-left text-xs font-bold transition-all cursor-pointer",
+                          isSubcatActive
+                            ? "bg-primary/10 text-primary font-extrabold"
+                            : "text-on-surface-variant/80 hover:bg-slate-50 hover:text-on-surface"
+                        )}
+                      >
+                        <span>{subcat.name}</span>
+                        {isSubcatActive && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {dynamicCategories.length > 4 && (
+          <button
+            onClick={() => setShowAllCategories(!showAllCategories)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-low hover:bg-surface-container px-4 py-2.5 text-xs font-bold text-on-surface-variant transition-colors cursor-pointer mt-1"
+          >
+            <span>{showAllCategories ? "Show Less" : `Show More (+${dynamicCategories.length - 4})`}</span>
+            <ChevronDown size={14} className={cn("transition-transform duration-200 text-outline-variant", showAllCategories && "rotate-180 text-primary")} />
+          </button>
+        )}
+      </div>
+    </section>
+
+    <section>
+      <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Condition</h3>
+      <div className="space-y-3">
+        {CONDITION_OPTIONS.filter((option) => option.id !== "all").map((option) => (
+          <label key={option.id} className="flex items-center gap-3 text-base text-on-surface-variant">
+            <input
+              type="checkbox"
+              checked={selectedCondition === option.id}
+              onChange={() => setSelectedCondition(selectedCondition === option.id ? "all" : option.id)}
+              className="h-5 w-5 rounded-md border-outline-variant/30 text-primary focus:ring-primary/20"
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Price Range</h3>
+        <span className="text-xs font-bold text-primary">
+          ₹{minPrice === "" ? 0 : minPrice} to ₹{maxPrice === "" ? "5000+" : maxPrice}
+        </span>
+      </div>
+      
+      {/* HTML Range Slider (controls Max price) */}
+      <input
+        type="range"
+        min="0"
+        max="5000"
+        step="100"
+        value={maxPrice === "" ? 5000 : maxPrice}
+        onChange={(e) => {
+          const val = Number(e.target.value)
+          setMaxPrice(val >= 5000 ? "" : val)
+        }}
+        className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
+      />
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1 text-left">
+          <span className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-wider pl-1">Min (₹)</span>
+          <input
+            type="number"
+            value={minPrice}
+            onChange={(e) => {
+              const val = e.target.value
+              setMinPrice(val === "" ? "" : Number(val))
+            }}
+            placeholder="Min"
+            className="rounded-2xl border border-outline-variant/20 bg-surface px-4 py-3 text-xs font-semibold text-on-surface outline-none focus:border-primary transition-colors w-full"
+          />
+        </div>
+        <div className="flex flex-col gap-1 text-left">
+          <span className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-wider pl-1">Max (₹)</span>
+          <input
+            type="number"
+            value={maxPrice}
+            onChange={(e) => {
+              const val = e.target.value
+              setMaxPrice(val === "" ? "" : Number(val))
+            }}
+            placeholder="Max"
+            className="rounded-2xl border border-outline-variant/20 bg-surface px-4 py-3 text-xs font-semibold text-on-surface outline-none focus:border-primary transition-colors w-full"
+          />
+        </div>
+      </div>
+    </section>
+
+    {/* Dynamic Parametric Filters */}
+    {activeAttributeSchema.length > 0 && (
+      <div className="space-y-6 border-t border-outline-variant/10 pt-6 animate-in fade-in duration-200">
+        {activeAttributeSchema.map((attr: any) => {
+          const selectedVals = selectedAttributes[attr.key] || []
+          return (
+            <section key={attr.key}>
+              <h3 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">{attr.label}</h3>
+              <div className="space-y-3">
+                {attr.options?.map((option: string) => {
+                  const isChecked = selectedVals.includes(option)
+                  return (
+                    <label key={option} className="flex items-center gap-3 text-base text-on-surface-variant cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setSelectedAttributes((prev) => {
+                            const current = prev[attr.key] || []
+                            const next = current.includes(option)
+                              ? current.filter((v) => v !== option)
+                              : [...current, option]
+                            return {
+                              ...prev,
+                              [attr.key]: next,
+                            }
+                          })
+                        }}
+                        className="h-5 w-5 rounded-md border-outline-variant/30 text-primary focus:ring-primary/20 cursor-pointer"
+                      />
+                      <span>{option}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })}
+      </div>
+    )}
+
+    <button
+      onClick={resetFilters}
+      className="w-full rounded-full border border-outline-variant/20 bg-surface-container-low px-4 py-3 text-sm font-bold text-on-surface-variant transition-colors hover:text-primary"
+    >
+      Reset Filters
+    </button>
+  </div>
+)
+
 interface HomePageProps {
   searchParams: Promise<{ mode?: string; category?: string; view?: string }>
 }
@@ -137,12 +409,17 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
   const [activeCampus, setActiveCampus] = useState("Aligarh Muslim University (AMU)")
   const [listingsList, setListingsList] = useState<any[]>([])
+  const [nearbyListingsMap, setNearbyListingsMap] = useState<Record<string, any[]>>({})
+  const [isNearbyLoading, setIsNearbyLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState(category)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCondition, setSelectedCondition] = useState("all")
-  const [selectedPriceRange, setSelectedPriceRange] = useState("all")
+  const [minPrice, setMinPrice] = useState<number | "">("")
+  const [maxPrice, setMaxPrice] = useState<number | "">("")
   const [sortBy, setSortBy] = useState("latest")
+  const [dbCategories, setDbCategories] = useState<any[]>([])
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string[]>>({})
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false)
   const [visibleNotificationCount, setVisibleNotificationCount] = useState(1)
@@ -162,9 +439,57 @@ export default function HomePage({ searchParams }: HomePageProps) {
   // Last corrected fuzzy term ("Did you mean")
   const [fuzzyCorrection, setFuzzyCorrection] = useState<string | null>(null)
 
+  const dynamicCategories = useMemo(() => {
+    if (dbCategories.length === 0) return CATEGORIES
+    return [
+      { id: "all", name: "All Items", shortName: "All Items", icon: Sparkles, tone: "indigo" as const },
+      ...dbCategories.filter(c => !c.parent_id).map((c, idx) => {
+        const tones = ["sky", "amber", "emerald", "rose", "indigo"] as const
+        return {
+          id: c.slug,
+          name: c.name,
+          shortName: c.name,
+          icon: getCategoryIcon(c.icon_name, c.slug),
+          tone: tones[idx % tones.length],
+        }
+      })
+    ]
+  }, [dbCategories])
+
+  const activeCategoryObj = useMemo(() => {
+    return dbCategories.find((c) => c.slug === selectedCategory)
+  }, [selectedCategory, dbCategories])
+
+  const activeAttributeSchema = useMemo(() => {
+    if (!activeCategoryObj?.attribute_schema) return []
+    const schema = activeCategoryObj.attribute_schema
+    if (typeof schema === "string") {
+      try {
+        return JSON.parse(schema)
+      } catch (e) {
+        return []
+      }
+    }
+    return Array.isArray(schema) ? schema : []
+  }, [activeCategoryObj])
+
+  useEffect(() => {
+    setSelectedAttributes({})
+  }, [selectedCategory])
+
+  useEffect(() => {
+    async function loadCategories() {
+      const res = await getCategories()
+      if (res.categories) {
+        setDbCategories(res.categories)
+      }
+    }
+    loadCategories()
+  }, [])
+
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedCategory, searchQuery, selectedCondition, selectedPriceRange, sortBy, activeCampus])
+  }, [selectedCategory, searchQuery, selectedCondition, minPrice, maxPrice, sortBy, activeCampus])
 
   useEffect(() => {
     if (category) {
@@ -195,15 +520,31 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
       try {
         setIsLoading(true)
+        setIsNearbyLoading(true)
         const dbCampus = activeCampus.split(" (")[0]
         const res = await getActiveListings(selectedCategory, dbCampus)
         if (res.listings) {
           setListingsList(res.listings)
         }
+
+        // Fetch listings of nearby campuses
+        const nearby = getNearbyCampuses(activeCampus)
+        const nearbyResults: Record<string, any[]> = {}
+        await Promise.all(
+          nearby.map(async (nc) => {
+            const dbNc = nc.name.split(" (")[0]
+            const ncRes = await getActiveListings(selectedCategory, dbNc)
+            if (ncRes.listings) {
+              nearbyResults[nc.name] = ncRes.listings
+            }
+          })
+        )
+        setNearbyListingsMap(nearbyResults)
       } catch (error) {
         console.error("Failed to load listings:", error)
       } finally {
         setIsLoading(false)
+        setIsNearbyLoading(false)
       }
     }
 
@@ -285,7 +626,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
     const categorySuggestions: SearchSuggestion[] = []
     for (const { patterns, categoryId } of INTENT_MAP) {
       if (patterns.test(q)) {
-        const cat = CATEGORIES.find((c) => c.id === categoryId)
+        const cat = dynamicCategories.find((c) => c.id === categoryId)
         if (cat) {
           categorySuggestions.push({
             type: "category" as const,
@@ -333,15 +674,22 @@ export default function HomePage({ searchParams }: HomePageProps) {
       list = list.filter((listing) => listing.condition === selectedCondition)
     }
 
-    if (selectedPriceRange !== "all") {
-      if (selectedPriceRange === "under_1000") {
-        list = list.filter((listing) => listing.price < 1000)
-      } else if (selectedPriceRange === "1000_5000") {
-        list = list.filter((listing) => listing.price >= 1000 && listing.price <= 5000)
-      } else if (selectedPriceRange === "over_5000") {
-        list = list.filter((listing) => listing.price > 5000)
-      }
+    if (minPrice !== "") {
+      list = list.filter((listing) => listing.price >= minPrice)
     }
+    if (maxPrice !== "") {
+      list = list.filter((listing) => listing.price <= maxPrice)
+    }
+
+    // Category dynamic attributes filters
+    Object.entries(selectedAttributes).forEach(([key, values]) => {
+      if (values && values.length > 0) {
+        list = list.filter((listing) => {
+          const val = listing.metadata?.[key]
+          return val && values.includes(String(val))
+        })
+      }
+    })
 
     // Sort: when query is active, Fuse already sorted by relevance above;
     // manual sort overrides only when user explicitly changes the dropdown.
@@ -352,7 +700,66 @@ export default function HomePage({ searchParams }: HomePageProps) {
     }
 
     return list
-  }, [listingsList, searchQuery, selectedCondition, selectedPriceRange, sortBy, fuse])
+  }, [listingsList, searchQuery, selectedCondition, minPrice, maxPrice, sortBy, fuse])
+
+  // ─── Filtered + scored nearby listing results ──────────────────────────────
+  const processedNearbyListingsMap = useMemo(() => {
+    const results: Record<string, any[]> = {}
+    const q = searchQuery.trim()
+
+    Object.entries(nearbyListingsMap).forEach(([campusName, listings]) => {
+      let list = [...listings]
+
+      if (q && list.length > 0) {
+        const tempFuse = new Fuse(list, {
+          keys: [
+            { name: "title", weight: 0.5 },
+            { name: "keywords", weight: 0.25 },
+            { name: "description", weight: 0.15 },
+            { name: "categorySlug", weight: 0.1 },
+          ],
+          threshold: 0.38,
+          includeScore: true,
+          ignoreLocation: true,
+        })
+        const fuseResults = tempFuse.search(q)
+        list = fuseResults.map((r) => ({ ...r.item, _score: r.score ?? 1 }))
+      }
+
+      if (selectedCondition !== "all") {
+        list = list.filter((listing) => listing.condition === selectedCondition)
+      }
+
+      if (minPrice !== "") {
+        list = list.filter((listing) => listing.price >= minPrice)
+      }
+      if (maxPrice !== "") {
+        list = list.filter((listing) => listing.price <= maxPrice)
+      }
+
+      // Category dynamic attributes filters
+      Object.entries(selectedAttributes).forEach(([key, values]) => {
+        if (values && values.length > 0) {
+          list = list.filter((listing) => {
+            const val = listing.metadata?.[key]
+            return val && values.includes(String(val))
+          })
+        }
+      })
+
+      if (sortBy === "price_asc") {
+        list.sort((a, b) => a.price - b.price)
+      } else if (sortBy === "price_desc") {
+        list.sort((a, b) => b.price - a.price)
+      }
+
+      if (list.length > 0) {
+        results[campusName] = list
+      }
+    })
+
+    return results
+  }, [nearbyListingsMap, searchQuery, selectedCondition, minPrice, maxPrice, sortBy])
 
   const ITEMS_PER_PAGE = 6
   const totalPages = Math.ceil(processedListings.length / ITEMS_PER_PAGE)
@@ -367,7 +774,8 @@ export default function HomePage({ searchParams }: HomePageProps) {
     selectedCategory !== "all" ||
     searchQuery.trim().length > 0 ||
     selectedCondition !== "all" ||
-    selectedPriceRange !== "all"
+    minPrice !== "" ||
+    maxPrice !== ""
 
   const getPageNumbers = () => {
     const pages = []
@@ -405,86 +813,15 @@ export default function HomePage({ searchParams }: HomePageProps) {
   const resetFilters = () => {
     setSearchQuery("")
     setSelectedCondition("all")
-    setSelectedPriceRange("all")
+    setMinPrice("")
+    setMaxPrice("")
     setSortBy("latest")
+    setSelectedAttributes({})
   }
 
-  const FilterSidebar = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={cn("space-y-8", mobile ? "p-5" : "rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm")}>
-      <section>
-        <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Categories</h3>
-        <div className="space-y-2">
-          {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4)).map((categoryItem) => {
-            const Icon = categoryItem.icon
-            const isActive = selectedCategory === categoryItem.id
 
-            return (
-              <button
-                key={categoryItem.id}
-                onClick={() => setSelectedCategory(categoryItem.id)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-[1.4rem] px-4 py-3.5 text-left text-base font-semibold transition-all",
-                  isActive
-                    ? "bg-primary text-white shadow-[0_12px_28px_rgba(59,61,229,0.18)]"
-                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
-                )}
-              >
-                <Icon size={18} />
-                <span>{categoryItem.name}</span>
-              </button>
-            )
-          })}
-          {CATEGORIES.length > 4 && (
-            <button
-              onClick={() => setShowAllCategories(!showAllCategories)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-low hover:bg-surface-container px-4 py-2.5 text-xs font-bold text-on-surface-variant transition-colors cursor-pointer mt-1"
-            >
-              <span>{showAllCategories ? "Show Less" : `Show More (+${CATEGORIES.length - 4})`}</span>
-              <ChevronDown size={14} className={cn("transition-transform duration-200 text-outline-variant", showAllCategories && "rotate-180 text-primary")} />
-            </button>
-          )}
-        </div>
-      </section>
+  // FilterSidebar component is defined at top-level
 
-      <section>
-        <h3 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Condition</h3>
-        <div className="space-y-3">
-          {CONDITION_OPTIONS.filter((option) => option.id !== "all").map((option) => (
-            <label key={option.id} className="flex items-center gap-3 text-base text-on-surface-variant">
-              <input
-                type="checkbox"
-                checked={selectedCondition === option.id}
-                onChange={() => setSelectedCondition(selectedCondition === option.id ? "all" : option.id)}
-                className="h-5 w-5 rounded-md border-outline-variant/30 text-primary focus:ring-primary/20"
-              />
-              <span>{option.label}</span>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-5 flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant/70">Price Range</h3>
-          <span className="text-sm text-on-surface-variant">₹0 to ₹5000+</span>
-        </div>
-        <div className="h-2 rounded-full bg-surface-container-low">
-          <div className="h-2 w-1/2 rounded-full bg-primary" />
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-outline-variant/20 bg-surface px-4 py-3 text-sm text-on-surface-variant">Min</div>
-          <div className="rounded-2xl border border-outline-variant/20 bg-surface px-4 py-3 text-sm text-on-surface-variant">Max</div>
-        </div>
-      </section>
-
-      <button
-        onClick={resetFilters}
-        className="w-full rounded-full border border-outline-variant/20 bg-surface-container-low px-4 py-3 text-sm font-bold text-on-surface-variant transition-colors hover:text-primary"
-      >
-        Reset Filters
-      </button>
-    </div>
-  )
 
   if (showLandingHero) {
     const websiteJsonLd = {
@@ -865,7 +1202,24 @@ export default function HomePage({ searchParams }: HomePageProps) {
       <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="sticky top-28">
-            <FilterSidebar />
+            <FilterSidebar
+              dynamicCategories={dynamicCategories}
+              dbCategories={dbCategories}
+              showAllCategories={showAllCategories}
+              setShowAllCategories={setShowAllCategories}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              selectedCondition={selectedCondition}
+              setSelectedCondition={setSelectedCondition}
+              minPrice={minPrice}
+              setMinPrice={setMinPrice}
+              maxPrice={maxPrice}
+              setMaxPrice={setMaxPrice}
+              activeAttributeSchema={activeAttributeSchema}
+              selectedAttributes={selectedAttributes}
+              setSelectedAttributes={setSelectedAttributes}
+              resetFilters={resetFilters}
+            />
           </div>
         </aside>
 
@@ -957,7 +1311,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
             </div>
 
             <MobileCategoryStrip
-              categories={CATEGORIES}
+              categories={dynamicCategories}
               selectedCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
               className="mt-4 lg:hidden"
@@ -990,13 +1344,13 @@ export default function HomePage({ searchParams }: HomePageProps) {
                         }}
                         className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
                       >
-                        <span>Searching in: {CATEGORIES.find((c) => c.id === detectedIntent)?.name}</span>
+                        <span>Searching in: {dynamicCategories.find((c) => c.id === detectedIntent)?.name}</span>
                         <X size={11} />
                       </button>
                     </>
                   )}
 
-                  {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+                  {((selectedCondition !== "all" ? 1 : 0) + ((minPrice !== "" || maxPrice !== "") ? 1 : 0)) > 0 && (
                   <>
                     <div className="hidden h-4 w-px bg-outline-variant/30 sm:block" />
                     <button
@@ -1037,7 +1391,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                   }}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer",
-                    isFiltersExpanded || ((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0
+                    isFiltersExpanded || ((selectedCondition !== "all" ? 1 : 0) + ((minPrice !== "" || maxPrice !== "") ? 1 : 0)) > 0
                       ? "border-primary/50 bg-primary/10 text-primary"
                       : "border-outline-variant/30 bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high"
                   )}
@@ -1045,9 +1399,9 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 >
                   <Filter size={14} />
                   <span>Filters</span>
-                  {((selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)) > 0 && (
+                  {((selectedCondition !== "all" ? 1 : 0) + ((minPrice !== "" || maxPrice !== "") ? 1 : 0)) > 0 && (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[9px] font-extrabold text-white">
-                      {(selectedCondition !== "all" ? 1 : 0) + (selectedPriceRange !== "all" ? 1 : 0)}
+                      {(selectedCondition !== "all" ? 1 : 0) + ((minPrice !== "" || maxPrice !== "") ? 1 : 0)}
                     </span>
                   )}
                 </button>
@@ -1090,20 +1444,42 @@ export default function HomePage({ searchParams }: HomePageProps) {
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70">Price Limit</p>
                       <div className="flex flex-wrap gap-2">
-                        {PRICE_OPTIONS.map((option) => (
-                          <button
-                            key={option.id}
-                            onClick={() => setSelectedPriceRange(option.id)}
-                            className={cn(
-                              "rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
-                              selectedPriceRange === option.id
-                                ? "border-primary/40 bg-primary/10 text-primary font-bold shadow-sm"
-                                : "border-outline-variant/15 bg-white text-on-surface-variant hover:bg-surface-container"
-                            )}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
+                        {PRICE_OPTIONS.map((option) => {
+                          let isActive = false
+                          if (option.id === "all" && minPrice === "" && maxPrice === "") isActive = true
+                          else if (option.id === "under_1000" && minPrice === "" && maxPrice === 1000) isActive = true
+                          else if (option.id === "1000_5000" && minPrice === 1000 && maxPrice === 5000) isActive = true
+                          else if (option.id === "over_5000" && minPrice === 5000 && maxPrice === "") isActive = true
+
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => {
+                                if (option.id === "all") {
+                                  setMinPrice("")
+                                  setMaxPrice("")
+                                } else if (option.id === "under_1000") {
+                                  setMinPrice("")
+                                  setMaxPrice(1000)
+                                } else if (option.id === "1000_5000") {
+                                  setMinPrice(1000)
+                                  setMaxPrice(5000)
+                                } else if (option.id === "over_5000") {
+                                  setMinPrice(5000)
+                                  setMaxPrice("")
+                                }
+                              }}
+                              className={cn(
+                                "rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-150 hover:scale-105 active:scale-95 cursor-pointer",
+                                isActive
+                                  ? "border-primary/40 bg-primary/10 text-primary font-bold shadow-sm"
+                                  : "border-outline-variant/15 bg-white text-on-surface-variant hover:bg-surface-container"
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1150,7 +1526,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                             Try a different keyword or browse a category:
                           </p>
                           <div className="mt-5 flex flex-wrap justify-center gap-2">
-                            {CATEGORIES.filter((c) => c.id !== "all").map((c) => {
+                            {dynamicCategories.filter((c) => c.id !== "all").map((c) => {
                               const CatIcon = c.icon
                               return (
                                 <button
@@ -1232,6 +1608,41 @@ export default function HomePage({ searchParams }: HomePageProps) {
             </div>
           )}
 
+          {/* Nearby Campus Recommendations */}
+          {!isLoading && Object.keys(processedNearbyListingsMap).length > 0 && (
+            <div className="space-y-10 mt-10">
+              {Object.entries(processedNearbyListingsMap).map(([campusName, listings]) => {
+                const shortName = CAMPUSES.find(c => c.name === campusName)?.short || campusName
+                return (
+                  <div key={campusName} className="space-y-4 border-t border-outline-variant/15 pt-8 text-left">
+                    <div className="flex items-center justify-between px-1">
+                      <div>
+                        <span className="inline-flex rounded-full bg-secondary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary">
+                          Nearby Campus
+                        </span>
+                        <h3 className="font-display text-xl font-extrabold text-slate-800 mt-1">
+                          {selectedCategory !== "all" 
+                            ? `${dynamicCategories.find(cat => cat.id === selectedCategory)?.name || "Items"} in nearby ${shortName}` 
+                            : `Deals in nearby ${shortName}`}
+                        </h3>
+                      </div>
+                      <span className="text-xs text-on-surface-variant font-semibold bg-slate-100 px-3 py-1.5 rounded-full shadow-sm">
+                        {listings.length} {listings.length === 1 ? "item" : "items"}
+                      </span>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x scrollbar-none scroll-smooth -mx-4 px-4 sm:mx-0 sm:px-0">
+                      {listings.map((item) => (
+                        <div key={item.id} className="w-[280px] shrink-0 snap-start">
+                          <ListingCard {...item} compactOnMobile />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           <section className="grid gap-6 pt-8 lg:grid-cols-3">
             <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm lg:col-span-2">
               <div className="flex items-center gap-3">
@@ -1293,7 +1704,25 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 <ArrowLeft size={18} />
               </button>
             </div>
-            <FilterSidebar mobile />
+            <FilterSidebar
+              mobile
+              dynamicCategories={dynamicCategories}
+              dbCategories={dbCategories}
+              showAllCategories={showAllCategories}
+              setShowAllCategories={setShowAllCategories}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              selectedCondition={selectedCondition}
+              setSelectedCondition={setSelectedCondition}
+              minPrice={minPrice}
+              setMinPrice={setMinPrice}
+              maxPrice={maxPrice}
+              setMaxPrice={setMaxPrice}
+              activeAttributeSchema={activeAttributeSchema}
+              selectedAttributes={selectedAttributes}
+              setSelectedAttributes={setSelectedAttributes}
+              resetFilters={resetFilters}
+            />
           </div>
         </div>
       ) : null}

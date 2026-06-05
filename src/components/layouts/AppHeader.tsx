@@ -345,7 +345,7 @@ export function AppHeader({ profile }: AppHeaderProps) {
             className="hidden rounded-full p-2.5 text-on-surface-variant transition-all duration-200 hover:bg-surface-container hover:text-primary lg:inline-flex hover:scale-110 active:scale-90"
             title="Dashboard"
           >
-            <Bell size={20} />
+            <LayoutDashboard size={20} />
           </Link>
 
           {/* Campus Selector (Mobile only) - Resolves incomplete header on mobile screens */}

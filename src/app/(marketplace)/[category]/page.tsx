@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getActiveListings } from "@/features/listings/actions"
+import { getActiveListings, getCategories } from "@/features/listings/actions"
 import CategoryClientPage from "./_components/CategoryClientPage"
 
 // ─── Whitelisted category slugs ──────────────────────────────────────────────
@@ -36,6 +36,21 @@ const CATEGORY_META: Record<
   },
 }
 
+const EMOJI_MAP: Record<string, string> = {
+  electronics: "💻",
+  books: "📚",
+  cycles: "🚲",
+  "dorm-decor": "🛏️",
+  "sports-equipment": "⚽",
+  stationery: "✏️",
+  fashion: "👕",
+  furniture: "🪑",
+  appliances: "🔌",
+  instruments: "🎸",
+  "lab-equipment": "🧪",
+  other: "📦",
+}
+
 // ─── Dynamic metadata ─────────────────────────────────────────────────────────
 export async function generateMetadata({
   params,
@@ -43,7 +58,19 @@ export async function generateMetadata({
   params: Promise<{ category: string }>
 }): Promise<Metadata> {
   const { category } = await params
-  const meta = CATEGORY_META[category]
+  let meta = CATEGORY_META[category]
+
+  if (!meta) {
+    const res = await getCategories()
+    const dbCat = res.categories?.find((c: any) => c.slug === category)
+    if (dbCat) {
+      meta = {
+        name: dbCat.name,
+        description: `Buy and sell second-hand ${dbCat.name.toLowerCase()} from verified AMU students.`,
+        emoji: EMOJI_MAP[category] || "📦",
+      }
+    }
+  }
 
   if (!meta) {
     return {
@@ -82,7 +109,19 @@ export default async function CategoryPage({
   params: Promise<{ category: string }>
 }) {
   const { category } = await params
-  const meta = CATEGORY_META[category]
+  let meta = CATEGORY_META[category]
+
+  if (!meta) {
+    const res = await getCategories()
+    const dbCat = res.categories?.find((c: any) => c.slug === category)
+    if (dbCat) {
+      meta = {
+        name: dbCat.name,
+        description: `Buy and sell second-hand ${dbCat.name.toLowerCase()} from verified AMU students.`,
+        emoji: EMOJI_MAP[category] || "📦",
+      }
+    }
+  }
 
   if (!meta) {
     notFound()
