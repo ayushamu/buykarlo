@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js"
 
 const siteUrl = "https://www.buykarlo.in"
 
+export const revalidate = 3600 // Cache and revalidate sitemap every hour
+
 const staticRoutes = [
   "",
   "/explore",

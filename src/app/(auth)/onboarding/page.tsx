@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { completeOnboarding } from "./actions"
-import { User, School, BookOpen, Phone, ShieldCheck, Lock, Eye, EyeOff, Check, ChevronDown } from "lucide-react"
+import { User, School, BookOpen, Phone, ShieldCheck, Lock, Eye, EyeOff, Check, ChevronDown, Gift } from "lucide-react"
 import { AuthLayout } from "@/components/auth/AuthLayout"
 import { cn } from "@/lib/utils"
 import { CAMPUSES } from "@/lib/constants"
@@ -21,6 +21,7 @@ function OnboardingForm() {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [referralCode, setReferralCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -45,6 +46,14 @@ function OnboardingForm() {
     }
     getUser()
   }, [router, supabase, fullName])
+
+  // Read cookie on mount to pre-fill referral code
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|; )buykarlo_ref=([^;]*)/)
+    if (match) {
+      setReferralCode(decodeURIComponent(match[1]).toUpperCase())
+    }
+  }, [])
 
   const filteredUniversities = useMemo(() => {
     const query = university.toLowerCase().trim()
@@ -100,7 +109,8 @@ function OnboardingForm() {
         university,
         department,
         phone,
-        password
+        password,
+        referralCode
       })
 
       if (actionResult.error) {
@@ -295,6 +305,20 @@ function OnboardingForm() {
                 {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 px-1">
+              <Gift className="size-3.5 text-on-surface-variant" /> Referral Code (Optional)
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. SANA"
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+              disabled={loading || success}
+              className="font-mono uppercase font-bold"
+            />
           </div>
 
           <Button

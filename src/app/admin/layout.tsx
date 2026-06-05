@@ -13,7 +13,8 @@ import {
   ArrowLeft,
   Menu,
   X,
-  FolderTree
+  FolderTree,
+  Users
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -23,6 +24,7 @@ const ADMIN_NAV = [
   { name: "Manage Categories", href: "/admin/categories", match: (pathname: string) => pathname.startsWith("/admin/categories"), icon: FolderTree },
   { name: "Reports & Safety", href: "/admin/reports", match: (pathname: string) => pathname === "/admin/reports", icon: AlertTriangle },
   { name: "ID Verifications", href: "/admin/verifications", match: (pathname: string) => pathname === "/admin/verifications", icon: ShieldCheck },
+  { name: "Referral Partners", href: "/admin/partners", match: (pathname: string) => pathname.startsWith("/admin/partners"), icon: Users },
   { name: "System Settings", href: "/admin/settings", match: (pathname: string) => pathname === "/admin/settings", icon: Settings },
 ]
 

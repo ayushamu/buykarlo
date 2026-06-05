@@ -46,3 +46,7 @@ next-env.d.ts
 # local WhatsApp session state
 .wwebjs_auth/
 services/**/.wwebjs_auth/
+
+# local scratch and LCP files
+/scratch/
+/lcp_evidence.png

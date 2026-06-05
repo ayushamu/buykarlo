@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         "/register",
         "/sell",
         "/api",
+        "/partners",
       ],
     },
     sitemap: `${siteUrl}/sitemap.xml`,

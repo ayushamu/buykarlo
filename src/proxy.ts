@@ -17,7 +17,39 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
+  // Check for referral code in path or query
+  let refCode: string | null = null
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/r/')) {
+    refCode = path.substring(3).trim().toUpperCase()
+  } else {
+    const refParam = request.nextUrl.searchParams.get('ref')
+    if (refParam) {
+      refCode = refParam.trim().toUpperCase()
+    }
+  }
+
+  // If path is /r/CODE, redirect to / with cookie set
+  if (path.startsWith('/r/') && refCode) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    const response = NextResponse.redirect(url)
+    response.cookies.set('buykarlo_ref', refCode, {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: '/',
+      sameSite: 'lax',
+    })
+    return response
+  }
+
   let supabaseResponse = NextResponse.next({ request })
+  if (refCode) {
+    supabaseResponse.cookies.set('buykarlo_ref', refCode, {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: '/',
+      sameSite: 'lax',
+    })
+  }
 
   const supabase = createServerClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     cookies: {
@@ -34,6 +66,19 @@ export async function proxy(request: NextRequest) {
     },
   })
 
+  // Helper redirect function to preserve the referral cookie across internal redirects
+  const helperRedirect = (url: URL) => {
+    const res = NextResponse.redirect(url)
+    if (refCode) {
+      res.cookies.set('buykarlo_ref', refCode, {
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+        path: '/',
+        sameSite: 'lax',
+      })
+    }
+    return res
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
   const protectedPaths = ['/dashboard', '/sell', '/chat', '/profile', '/settings', '/messages', '/admin']
@@ -48,7 +93,7 @@ export async function proxy(request: NextRequest) {
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    return helperRedirect(url)
   }
 
   // Guard admin paths by verifying profiles.is_admin is true
@@ -63,7 +108,7 @@ export async function proxy(request: NextRequest) {
     if (!profile || !profile.is_admin) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
-      return NextResponse.redirect(url)
+      return helperRedirect(url)
     }
   }
 
@@ -80,7 +125,7 @@ export async function proxy(request: NextRequest) {
       const nextParam = request.nextUrl.pathname + request.nextUrl.search
       url.pathname = '/onboarding'
       url.searchParams.set('next', nextParam)
-      return NextResponse.redirect(url)
+      return helperRedirect(url)
     }
   }
 
@@ -95,7 +140,7 @@ export async function proxy(request: NextRequest) {
     if (profile && profile.full_name && profile.phone_verified) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
-      return NextResponse.redirect(url)
+      return helperRedirect(url)
     }
   }
 

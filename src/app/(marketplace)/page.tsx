@@ -943,6 +943,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
                 alt="AMU students using BuyKarlo for trusted campus exchange"
                 fill
                 priority
+                fetchPriority="high"
                 sizes="(min-width: 1024px) 58vw, 100vw"
                 className="object-cover"
               />

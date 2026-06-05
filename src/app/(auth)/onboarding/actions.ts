@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import { sendWelcomeEmail } from "@/lib/email"
+
 
 interface CompleteOnboardingInput {
   fullName: string
@@ -10,6 +12,7 @@ interface CompleteOnboardingInput {
   department: string
   phone: string
   password?: string
+  referralCode?: string
 }
 
 export async function completeOnboarding(input: CompleteOnboardingInput) {
@@ -50,25 +53,61 @@ export async function completeOnboarding(input: CompleteOnboardingInput) {
     }
 
     // 4. Update profile details (the profile is automatically created via trigger on signup)
+    const cookieStore = await cookies()
+    const userEnteredCode = input.referralCode?.trim().toUpperCase()
+    const refCode = userEnteredCode || cookieStore.get('buykarlo_ref')?.value
+    let partnerId: string | null = null
+
+    if (refCode) {
+      const { data: partnerData, error: rpcError } = await supabase
+        .rpc("get_partner_by_code", { code: refCode })
+      
+      if (rpcError) {
+        console.error("RPC get_partner_by_code error:", rpcError)
+      }
+
+      const partner = Array.isArray(partnerData) ? partnerData[0] : partnerData
+      if (partner) {
+        partnerId = partner.id
+      } else if (userEnteredCode) {
+        return { error: `Invalid referral code: "${userEnteredCode}"` }
+      }
+    }
+
+    const profileUpdate: any = {
+      email: email,
+      full_name: input.fullName.trim(),
+      university: input.university.trim(),
+      department: input.department.trim(),
+      phone: displayPhone,
+      phone_verified: true,
+      verification_status: "unverified",
+      institutional_email: null,
+      institutional_verified: false,
+      trust_score: 50
+    }
+
+    if (partnerId) {
+      profileUpdate.referred_by = partnerId
+    }
+
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({
-        email: email,
-        full_name: input.fullName.trim(),
-        university: input.university.trim(),
-        department: input.department.trim(),
-        phone: displayPhone,
-        phone_verified: true,
-        verification_status: "unverified",
-        institutional_email: null,
-        institutional_verified: false,
-        trust_score: 50
-      })
+      .update(profileUpdate)
       .eq("id", user.id)
 
     if (updateError) {
       console.error("Onboarding Database Update Error:", updateError)
       return { error: `Failed to update profile details: ${updateError.message}` }
+    }
+
+    // Clear the referral cookie on successful onboarding association
+    if (partnerId) {
+      try {
+        cookieStore.delete('buykarlo_ref')
+      } catch (cookieErr) {
+        console.error("Failed to delete referral cookie:", cookieErr)
+      }
     }
 
     // Trigger onboarding welcome email asynchronously
