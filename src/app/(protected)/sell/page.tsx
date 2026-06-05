@@ -558,6 +558,17 @@ function SellPageInner() {
       return
     }
 
+    // Validate dynamic category specifications
+    for (const attr of attributeSchema) {
+      const isReq = attr.required ?? false
+      const val = attributes[attr.key]
+      if (isReq && (!val || !String(val).trim())) {
+        setError(`Please fill out the required specification: ${attr.label}`)
+        setSubmitting(false)
+        return
+      }
+    }
+
     try {
       const uploadedUrls: string[] = []
       for (let i = 0; i < images.length; i += 1) {
@@ -1053,56 +1064,90 @@ function SellPageInner() {
                 <div className="space-y-4 rounded-[1.5rem] border border-[var(--seller-border)] bg-[var(--seller-surface)]/25 p-5 md:p-6">
                   <p className="text-xs font-bold uppercase tracking-wider text-[var(--seller-primary-strong)]">Category Specifications</p>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {attributeSchema.map((attr: any) => (
-                      <div key={attr.key} className="space-y-2 relative attribute-dropdown-container">
-                        <label className="text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                          {attr.label}
-                        </label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setOpenAttributeDropdownKey(openAttributeDropdownKey === attr.key ? null : attr.key)}
-                            disabled={submitting}
-                            className="flex h-12 w-full items-center justify-between rounded-xl border border-[var(--seller-border)] bg-white px-4 text-sm font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
-                          >
-                            <span className="truncate">
-                              {attributes[attr.key] || `Select ${attr.label}`}
-                            </span>
-                            <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", openAttributeDropdownKey === attr.key && "rotate-180")} />
-                          </button>
-                          
-                          {openAttributeDropdownKey === attr.key && (
-                            <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                              {attr.options?.map((opt: string) => {
-                                const isSelected = attributes[attr.key] === opt
-                                return (
-                                  <button
-                                    key={opt}
-                                    type="button"
-                                    onClick={() => {
-                                      setAttributes((prev) => ({
-                                        ...prev,
-                                        [attr.key]: opt,
-                                      }))
-                                      setOpenAttributeDropdownKey(null)
-                                    }}
-                                    className={cn(
-                                      "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
-                                      isSelected
-                                        ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
-                                        : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
-                                    )}
-                                  >
-                                    <span className="truncate">{opt}</span>
-                                    {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
+                    {attributeSchema.map((attr: any) => {
+                      const isRequired = attr.required ?? false
+                      return (
+                        <div key={attr.key} className="space-y-2 relative attribute-dropdown-container">
+                          <label className="text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant flex items-center gap-1">
+                            {attr.label}
+                            {isRequired && <span className="text-rose-500 font-bold">*</span>}
+                          </label>
+                          <div className="relative">
+                            {attr.type === "text" ? (
+                              <Input
+                                type="text"
+                                required={isRequired}
+                                disabled={submitting}
+                                value={attributes[attr.key] || ""}
+                                onChange={(e) => setAttributes((prev) => ({
+                                  ...prev,
+                                  [attr.key]: e.target.value,
+                                }))}
+                                placeholder={`Enter ${attr.label.toLowerCase()}`}
+                                className="h-12 rounded-xl border-[var(--seller-border)] bg-white px-4 text-sm font-semibold placeholder:text-on-surface-variant/35 focus-visible:border-[var(--seller-primary)]"
+                              />
+                            ) : attr.type === "number" ? (
+                              <Input
+                                type="number"
+                                required={isRequired}
+                                disabled={submitting}
+                                value={attributes[attr.key] || ""}
+                                onChange={(e) => setAttributes((prev) => ({
+                                  ...prev,
+                                  [attr.key]: e.target.value,
+                                }))}
+                                placeholder={`Enter ${attr.label.toLowerCase()}`}
+                                className="h-12 rounded-xl border-[var(--seller-border)] bg-white px-4 text-sm font-semibold placeholder:text-on-surface-variant/35 focus-visible:border-[var(--seller-primary)]"
+                              />
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenAttributeDropdownKey(openAttributeDropdownKey === attr.key ? null : attr.key)}
+                                  disabled={submitting}
+                                  className="flex h-12 w-full items-center justify-between rounded-xl border border-[var(--seller-border)] bg-white px-4 text-sm font-semibold text-on-surface outline-none cursor-pointer hover:bg-slate-50 transition-colors"
+                                >
+                                  <span className="truncate">
+                                    {attributes[attr.key] || `Select ${attr.label}`}
+                                  </span>
+                                  <ChevronDown className={cn("size-4 text-on-surface-variant transition-transform duration-200", openAttributeDropdownKey === attr.key && "rotate-180")} />
+                                </button>
+                                
+                                {openAttributeDropdownKey === attr.key && (
+                                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 max-h-60 premium-dropdown-list bg-white border border-[var(--seller-border)] rounded-2xl shadow-[0_12px_32px_rgba(26,38,86,0.14)] p-1.5 flex flex-col space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    {attr.options?.map((opt: string) => {
+                                      const isSelected = attributes[attr.key] === opt
+                                      return (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          onClick={() => {
+                                            setAttributes((prev) => ({
+                                              ...prev,
+                                              [attr.key]: opt,
+                                            }))
+                                            setOpenAttributeDropdownKey(null)
+                                          }}
+                                          className={cn(
+                                            "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-body text-xs font-semibold text-left transition-colors duration-150 cursor-pointer",
+                                            isSelected
+                                              ? "bg-[var(--seller-surface)] text-[var(--seller-primary-strong)] font-bold"
+                                              : "hover:bg-[var(--seller-surface)]/50 hover:text-[var(--seller-primary-strong)] text-on-surface"
+                                          )}
+                                        >
+                                          <span className="truncate">{opt}</span>
+                                          {isSelected && <Check size={14} className="text-[var(--seller-primary-strong)] shrink-0" />}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               ) : null}
