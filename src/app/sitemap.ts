@@ -6,7 +6,7 @@ const siteUrl = "https://www.buykarlo.in"
 export const revalidate = 3600 // Cache and revalidate sitemap every hour
 
 const staticRoutes = [
-  "",
+  "/",
   "/explore",
   "/electronics",
   "/books",
@@ -33,8 +33,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sitemapEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified,
-    changeFrequency: route === "" ? "daily" : "weekly",
-    priority: route === "" ? 1.0 : (route.startsWith("/policies") ? 0.5 : 0.8),
+    changeFrequency: route === "/" ? "daily" : "weekly",
+    priority: route === "/" ? 1.0 : (route.startsWith("/policies") ? 0.5 : 0.8),
   }))
 
   // Try to append active product listings dynamically
